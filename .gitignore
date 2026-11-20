@@ -1,0 +1,79 @@
+# ==============================================================================
+# JanSamadhan - Git Ignore Configuration (PUBLIC Repository Safe)
+# ==============================================================================
+
+# 1. Environment Files & Real Credentials (NEVER commit secrets!)
+.env
+.env.*
+*.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+# Explicitly keep clean template examples
+!*.env.example
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# 2. Database Dumps, Backups, Snapshots & SQLite Files
+backend/backups/
+backups/
+*.sql
+*.db
+*.db-journal
+*.sqlite3
+*.backup
+*.backup.*
+*.bak
+
+# 3. User Uploaded Complaint Evidence & Local Files
+backend/uploads/*
+!backend/uploads/.gitkeep
+uploads/*
+!uploads/.gitkeep
+
+# 4. Virtual Environments & Python Caches
+venv/
+.venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 5. Node Dependencies & Frontend Build Output
+node_modules/
+frontend/node_modules/
+backend/mailer/node_modules/
+dist/
+dist-ssr/
+frontend/dist/
+.vite/
+
+# 6. Logs & Debugging Output
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 7. Local Testing Artifacts & Root Screenshots
+scratch/
+before_screenshot_*.png
+after_screenshot_*.png
+screenshot_*.png
+
+# 8. OS & Editor Artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+!.vscode/extensions.json
+.idea/
