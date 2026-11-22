@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import {
   ShieldCheck,
   FileText,
@@ -12,19 +13,106 @@ import {
   Compass,
   ChevronRight,
   CheckCircle,
-  Menu,
-  X,
   PhoneCall
 } from 'lucide-react';
 import JanSamadhanLogo from '../components/JanSamadhanLogo';
+import Navbar from '../components/Navbar';
 import homeHeroBg from '../assets/home_hero_bg.jpg';
+import { softHaptic, withHaptic } from '../utils/haptics';
+
+/* ------------------------------------------------------------
+   Animation variants — premium, smooth, subtle
+   ------------------------------------------------------------ */
+const EASE = [0.22, 1, 0.36, 1];
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, ease: EASE, delay: i * 0.08 }
+  })
+};
+
+const fadeIn = {
+  hidden: { opacity: 0 },
+  show: (i = 0) => ({ opacity: 1, transition: { duration: 0.8, ease: EASE, delay: i * 0.06 } })
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.94 },
+  show: (i = 0) => ({
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.55, ease: EASE, delay: i * 0.07 }
+  })
+};
+
+const staggerParent = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } }
+};
+
+const childFade = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE } }
+};
+
+/* Reveal-on-scroll wrapper */
+function Reveal({ children, variant = fadeUp, className = '', i = 0, once = true, amount = 0.25 }) {
+  return (
+    <motion.div
+      className={className}
+      variants={variant}
+      custom={i}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once, amount }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* Count-up number for hero stats */
+function CountUp({ end, duration = 2, suffix = '' }) {
+  const [val, setVal] = useState(0);
+  const ref = useRef(null);
+  const started = useRef(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting && !started.current) {
+          started.current = true;
+          const start = performance.now();
+          const step = (t) => {
+            const p = Math.min((t - start) / (duration * 1000), 1);
+            const eased = 1 - Math.pow(1 - p, 3);
+            setVal(Math.floor(eased * end));
+            if (p < 1) requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        }
+      });
+    }, { threshold: 0.4 });
+    io.observe(node);
+    return () => io.disconnect();
+  }, [end, duration]);
+  return <span ref={ref}>{val.toLocaleString('en-IN')}{suffix}</span>;
+}
 
 export default function LandingPage({ currentUser, onLogout, onNavigate }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // parallax for hero
+  const { scrollY } = useScroll();
+  const heroBgY = useTransform(scrollY, [0, 500], [0, 80]);
+  const heroContentY = useTransform(scrollY, [0, 500], [0, -30]);
+  const heroOpacity = useTransform(scrollY, [0, 400], [1, 0.4]);
+  const smoothY = useSpring(heroContentY, { stiffness: 120, damping: 30, mass: 0.3 });
 
   const handleAction = (intent) => {
-    setIsMobileMenuOpen(false);
-    // If logged in, navigate straight to citizen dashboard with intended mode
+    softHaptic('light');
     if (currentUser) {
       if (currentUser.role === 'OFFICER') {
         onNavigate('officer-dashboard');
@@ -34,23 +122,30 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
         onNavigate('citizen-dashboard', { initialTab: intent === 'track' ? 'my-complaints' : 'new-complaint' });
       }
     } else {
-      // Redirect to authentication with preserved intent
       onNavigate('auth', { targetIntent: intent });
     }
   };
 
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  /* Magnetic button effect: track pointer for radial glow */
+  const handleBtnMove = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+    e.currentTarget.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F5F9F6] text-[#102A43] font-sans antialiased selection:bg-[#138808]/20 selection:text-[#006B3C] overflow-x-hidden">
+
       {/* Top National Tricolor Stripe & Initiative Bar */}
       <div className="h-1.5 w-full tricolor-stripe"></div>
-      
+
       <div className="bg-[#102A43] text-slate-300 text-xs py-2 border-b border-slate-800">
         <div className="gov-container flex flex-wrap justify-between items-center gap-2">
           {/* Left: Initiative Titles */}
           <div className="flex items-center space-x-2 text-[11px] sm:text-xs">
-            <span className="w-2 h-2 rounded-full bg-[#FF9933] animate-pulse flex-shrink-0"></span>
+            <span className="relative w-2 h-2 rounded-full bg-[#FF9933] flex-shrink-0">
+              <span className="absolute inset-0 rounded-full bg-[#FF9933] animate-ping opacity-75"></span>
+            </span>
             <span className="font-semibold text-slate-100 whitespace-nowrap">
               Digital India Civic Redressal Initiative
             </span>
@@ -65,166 +160,27 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
               <span className="whitespace-nowrap"><span className="hidden sm:inline">Citizen </span>Helpline: <strong className="text-white font-bold tracking-wide">1800-JAN-SAMADHAN</strong></span>
             </span>
             <span className="text-slate-600 hidden sm:inline">|</span>
-            <button
-              onClick={() => onNavigate('admin-login', { path: '/admin/login' })}
+            <motion.button
+              onClick={withHaptic('light', () => onNavigate('admin-login', { path: '/admin/login' }))}
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.96 }}
+              transition={{ duration: 0.2, ease: EASE }}
               className="bg-[#FF9933] hover:bg-[#e68a2e] text-slate-950 px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-extrabold cursor-pointer transition-colors shadow-sm whitespace-nowrap inline-flex items-center space-x-1"
             >
               <ShieldCheck className="w-3 h-3 text-slate-950" />
               <span>Admin Login ↗</span>
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
 
-      {/* Main Header / Navigation (Stable Three-Section Grid Layout) */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/80">
-        <div className="gov-container h-20 flex items-center justify-between xl:grid xl:grid-cols-[auto_1fr_auto] xl:gap-8">
-          {/* Section 1: Left Auto-sized Logo */}
-          <div className="flex items-center flex-shrink-0">
-            <JanSamadhanLogo size="md" variant="light" onClick={() => onNavigate('landing')} />
-          </div>
-
-          {/* Section 2: Center Flexible Navigation Section (xl:flex, 1280px+) */}
-          <nav className="hidden xl:flex items-center justify-center space-x-6 2xl:space-x-8 text-sm font-semibold text-slate-700">
-            <a href="#home" className="text-[#006B3C] hover:text-[#138808] transition-colors whitespace-nowrap py-1">Home</a>
-            <a href="#about" className="hover:text-[#006B3C] transition-colors whitespace-nowrap py-1">About</a>
-            <a href="#trust" className="hover:text-[#006B3C] transition-colors whitespace-nowrap py-1">Why Trust</a>
-            <a href="#how-it-works" className="hover:text-[#006B3C] transition-colors whitespace-nowrap py-1">How It Works</a>
-            <a href="#action-section" className="hover:text-[#006B3C] transition-colors whitespace-nowrap py-1">Services</a>
-            <a href="#contact" className="hover:text-[#006B3C] transition-colors whitespace-nowrap py-1">Contact</a>
-          </nav>
-
-          {/* Section 3: Right Auto-sized Action Section (xl:flex, 1280px+) */}
-          <div className="hidden xl:flex items-center justify-end space-x-2.5 2xl:space-x-3 flex-shrink-0">
-            {currentUser ? (
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => handleAction('dashboard')}
-                  className="h-10 px-4 text-xs sm:text-sm font-bold bg-[#102A43] text-white hover:bg-slate-800 rounded-xl transition-all shadow-sm flex items-center space-x-1.5 whitespace-nowrap"
-                >
-                  <span>Dashboard ({currentUser.name?.split(' ')[0] || 'User'})</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-                {onLogout && (
-                  <button
-                    onClick={onLogout}
-                    className="h-10 px-3 text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center"
-                  >
-                    Logout
-                  </button>
-                )}
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={() => onNavigate('auth', { targetIntent: 'officer', path: '/login?intent=officer' })}
-                  className="h-10 px-3.5 text-xs xl:text-sm font-semibold text-slate-700 hover:text-[#102A43] hover:bg-slate-100 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center"
-                >
-                  Officer Portal
-                </button>
-                <button
-                  onClick={() => onNavigate('auth', { targetIntent: 'login', path: '/login' })}
-                  className="h-10 px-3.5 text-xs xl:text-sm font-semibold text-[#102A43] hover:text-[#006B3C] hover:bg-slate-100 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center"
-                >
-                  Citizen Login
-                </button>
-                <button
-                  onClick={() => handleAction('register')}
-                  className="h-10 px-4 text-xs xl:text-sm font-bold bg-[#138808] hover:bg-[#006B3C] text-white rounded-xl transition-all shadow-sm hover:shadow flex items-center space-x-1.5 cursor-pointer whitespace-nowrap"
-                >
-                  <span>Raise Complaint</span>
-                  <ArrowRight className="w-4 h-4 ml-0.5" />
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Mobile & Tablet Toggle (xl:hidden) */}
-          <div className="flex items-center space-x-2 xl:hidden">
-            {!currentUser && (
-              <button
-                onClick={() => handleAction('register')}
-                className="hidden sm:inline-flex px-3.5 py-2 text-xs font-bold bg-[#138808] text-white rounded-xl shadow-sm whitespace-nowrap"
-              >
-                Raise Complaint
-              </button>
-            )}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2.5 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
-              aria-label="Toggle Navigation Menu"
-            >
-              {isMobileMenuOpen ? <X className="w-6 h-6 text-[#102A43]" /> : <Menu className="w-6 h-6 text-[#102A43]" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile & Tablet Navigation Drawer (xl:hidden) */}
-        {isMobileMenuOpen && (
-          <div className="xl:hidden bg-white border-b-2 border-[#138808] shadow-2xl px-5 py-6 space-y-4 animate-in slide-in-from-top-3 duration-200">
-            <nav className="flex flex-col space-y-2.5 font-semibold text-slate-800 text-sm">
-              <a href="#home" onClick={closeMobileMenu} className="px-3 py-2 rounded-lg hover:bg-slate-50 text-[#006B3C]">Home</a>
-              <a href="#about" onClick={closeMobileMenu} className="px-3 py-2 rounded-lg hover:bg-slate-50">About</a>
-              <a href="#trust" onClick={closeMobileMenu} className="px-3 py-2 rounded-lg hover:bg-slate-50">Why Trust</a>
-              <a href="#how-it-works" onClick={closeMobileMenu} className="px-3 py-2 rounded-lg hover:bg-slate-50">How It Works</a>
-              <a href="#action-section" onClick={closeMobileMenu} className="px-3 py-2 rounded-lg hover:bg-slate-50">Services</a>
-              <a href="#contact" onClick={closeMobileMenu} className="px-3 py-2 rounded-lg hover:bg-slate-50">Contact</a>
-            </nav>
-
-            <div className="pt-3 border-t border-slate-200 flex flex-col space-y-2.5">
-              {currentUser ? (
-                <>
-                  <button
-                    onClick={() => handleAction('dashboard')}
-                    className="w-full py-3 bg-[#102A43] text-white font-bold rounded-xl text-sm flex items-center justify-center space-x-1.5"
-                  >
-                    <span>Go to Dashboard ({currentUser.name})</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                  {onLogout && (
-                    <button
-                      onClick={() => { closeMobileMenu(); onLogout(); }}
-                      className="w-full py-2.5 text-xs font-bold text-red-600 border border-red-200 rounded-xl"
-                    >
-                      Logout
-                    </button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => handleAction('register')}
-                    className="w-full py-3 bg-[#138808] text-white font-bold rounded-xl text-sm flex items-center justify-center space-x-2 shadow-md"
-                  >
-                    <span>Raise Complaint</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => { closeMobileMenu(); onNavigate('auth', { targetIntent: 'login', path: '/login' }); }}
-                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-[#102A43] font-bold rounded-xl text-sm"
-                  >
-                    Citizen Login
-                  </button>
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      onClick={() => { closeMobileMenu(); onNavigate('auth', { targetIntent: 'officer', path: '/login?intent=officer' }); }}
-                      className="py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold text-center"
-                    >
-                      Officer Portal
-                    </button>
-                    <button
-                      onClick={() => { closeMobileMenu(); onNavigate('admin-login', { path: '/admin/login' }); }}
-                      className="py-2.5 bg-amber-50 border border-amber-300 text-slate-900 rounded-xl text-xs font-bold text-center"
-                    >
-                      Admin Login ↗
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </header>
+      {/* Shared government-style navigation (replaces the inline navbar). */}
+      <Navbar
+        currentPage="landing"
+        currentUser={currentUser}
+        onNavigate={onNavigate}
+        onLogout={onLogout}
+      />
 
       {/* ========================================================
           SECTION A: HERO SECTION (WITH BESPOKE INDIAN SUNRISE BG)
@@ -234,70 +190,124 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
         className="relative pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24 overflow-hidden bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${homeHeroBg})` }}
       >
-        {/* Responsive Atmospheric Gradient Mask: guarantees total readability on all screen sizes */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/90 to-white/70 lg:to-white/40 pointer-events-none"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#F5F9F6]/30 to-[#F5F9F6] pointer-events-none"></div>
+        {/* Parallax bg layers */}
+        <motion.div style={{ y: heroBgY }} className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/90 to-white/70 lg:to-white/40 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#F5F9F6]/30 to-[#F5F9F6] pointer-events-none" />
 
-        <div className="relative gov-container">
+        {/* Floating blobs */}
+        <div className="js-bg-blob" style={{ width: 320, height: 320, background: '#FF9933', top: '10%', right: '5%' }} />
+        <div className="js-bg-blob" style={{ width: 280, height: 280, background: '#138808', bottom: '5%', left: '2%', animationDelay: '4s' }} />
+
+        <motion.div style={{ y: smoothY, opacity: heroOpacity }} className="relative gov-container">
           <div className="max-w-2xl xl:max-w-3xl 2xl:max-w-4xl space-y-6 sm:space-y-7 text-center lg:text-left">
             {/* Official Initiative Badge */}
-            <div>
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={0}
+            >
               <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/95 border border-[#138808]/40 shadow-sm backdrop-blur-sm">
-                <span className="w-2 h-2 rounded-full bg-[#138808] animate-pulse flex-shrink-0"></span>
+                <span className="w-2 h-2 rounded-full bg-[#138808] flex-shrink-0 relative">
+                  <span className="absolute inset-0 rounded-full bg-[#138808] animate-ping opacity-75"></span>
+                </span>
                 <span className="text-xs sm:text-sm font-bold text-[#006B3C] tracking-wide">
                   Official National Grievance Redressal Portal
                 </span>
               </div>
-            </div>
+            </motion.div>
 
             {/* Tagline Heading */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[52px] xl:text-[58px] 2xl:text-[64px] font-black text-[#102A43] tracking-tight leading-[1.12]">
-              Your Voice. <span className="text-[#FF9933]">Your Rights.</span> <br className="hidden sm:inline" />
+            <motion.h1
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={1}
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-[52px] xl:text-[58px] 2xl:text-[64px] font-black text-[#102A43] tracking-tight leading-[1.12]"
+            >
+              Your Voice. <span className="js-text-shimmer">Your Rights.</span> <br className="hidden sm:inline" />
               <span className="text-[#006B3C]">Our Responsibility.</span>
-            </h1>
+            </motion.h1>
 
             {/* Supporting Description */}
-            <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-slate-700 leading-relaxed font-medium max-w-2xl xl:max-w-3xl">
+            <motion.p
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={2}
+              className="text-sm sm:text-base lg:text-lg xl:text-xl text-slate-700 leading-relaxed font-medium max-w-2xl xl:max-w-3xl"
+            >
               JanSamadhan empowers every citizen of India to report civic issues in their own native language, attach live photo evidence, and track ground resolution through a transparent, AI-driven national platform.
-            </p>
+            </motion.p>
 
             {/* Multilingual Callout Chips */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-1.5 sm:gap-2 pt-1 text-xs sm:text-sm font-semibold text-slate-700">
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={3}
+              className="flex flex-wrap items-center justify-center lg:justify-start gap-1.5 sm:gap-2 pt-1 text-xs sm:text-sm font-semibold text-slate-700"
+            >
               <span className="flex items-center text-[#006B3C] font-bold mr-1">
                 <Languages className="w-4 h-4 mr-1.5 text-[#006B3C] flex-shrink-0" />
                 Speak or write in:
               </span>
-              <span className="px-2.5 sm:px-3 py-1 bg-white/95 rounded-lg border border-slate-200 shadow-2xs font-bold">हिंदी</span>
-              <span className="px-2.5 sm:px-3 py-1 bg-white/95 rounded-lg border border-slate-200 shadow-2xs font-bold">English</span>
-              <span className="px-2.5 sm:px-3 py-1 bg-white/95 rounded-lg border border-slate-200 shadow-2xs font-bold">Hinglish</span>
-              <span className="px-2.5 sm:px-3 py-1 bg-white/95 rounded-lg border border-slate-200 shadow-2xs font-bold">भोजपुरी</span>
-              <span className="px-2.5 sm:px-3 py-1 bg-white/95 rounded-lg border border-slate-200 shadow-2xs font-bold">मराठी</span>
-              <span className="px-2.5 sm:px-3 py-1 bg-white/95 rounded-lg border border-slate-200 shadow-2xs font-bold">বাংলা</span>
-              <span className="px-2.5 sm:px-3 py-1 bg-white/95 rounded-lg border border-slate-200 shadow-2xs font-bold">தமிழ்</span>
-              <span className="px-2.5 sm:px-3 py-1 bg-white/95 rounded-lg border border-slate-200 shadow-2xs font-bold">తెలుగు</span>
+              {['हिंदी', 'English', 'Hinglish', 'भोजपुरी', 'मराठी', 'বাংলা', 'தமிழ்', 'తెలుగు'].map((lang, i) => (
+                <motion.span
+                  key={lang}
+                  onMouseEnter={() => softHaptic('selection')}
+                  whileHover={{ y: -3, scale: 1.05 }}
+                  transition={{ duration: 0.2, ease: EASE }}
+                  className="px-2.5 sm:px-3 py-1 bg-white/95 rounded-lg border border-slate-200 shadow-2xs font-bold cursor-default"
+                  style={{ originX: 0.5, originY: 1 }}
+                >
+                  {lang}
+                </motion.span>
+              ))}
               <span className="text-slate-500 font-bold px-1">&amp; 22+ Scheduled Languages</span>
-            </div>
+            </motion.div>
 
-            {/* Matching CTA Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4 pt-2">
-              <button
-                onClick={() => handleAction('register')}
-                className="w-full sm:w-auto h-13 sm:h-14 min-h-[52px] px-8 py-3.5 bg-[#138808] hover:bg-[#006B3C] text-white font-extrabold rounded-2xl border-2 border-[#138808] hover:border-[#006B3C] shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-2 text-sm sm:text-base cursor-pointer"
+            {/* matching CTA Action Buttons */}
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={4}
+              className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4 pt-2"
+            >
+              <motion.button
+                onMouseMove={handleBtnMove}
+                onMouseEnter={() => softHaptic('soft')}
+                onClick={withHaptic('medium', () => handleAction('register'))}
+                whileHover={{ y: -3, boxShadow: '0 14px 36px rgba(19,136,8,0.38)' }}
+                whileTap={{ scale: 0.96 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                className="js-btn-primary w-full sm:w-auto h-13 sm:h-14 min-h-[52px] px-8 py-3.5 bg-[#138808] hover:bg-[#006B3C] text-white font-extrabold rounded-2xl border-2 border-[#138808] hover:border-[#006B3C] shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-2 text-sm sm:text-base cursor-pointer"
               >
-                <span>Register a Complaint</span>
-                <ArrowRight className="w-5 h-5 ml-0.5" />
-              </button>
-              <button
-                onClick={() => handleAction('track')}
+                <span className="relative z-10">Register a Complaint</span>
+                <ArrowRight className="w-5 h-5 ml-0.5 relative z-10" />
+              </motion.button>
+              <motion.button
+                onMouseEnter={() => softHaptic('soft')}
+                onClick={withHaptic('medium', () => handleAction('track'))}
+                whileHover={{ y: -3, boxShadow: '0 14px 36px rgba(16,42,67,0.18)' }}
+                whileTap={{ scale: 0.96 }}
+                transition={{ duration: 0.25, ease: EASE }}
                 className="w-full sm:w-auto h-13 sm:h-14 min-h-[52px] px-8 py-3.5 bg-white/95 hover:bg-slate-50 text-[#102A43] font-bold rounded-2xl border-2 border-slate-300 shadow-sm hover:border-[#006B3C] transition-all duration-200 flex items-center justify-center space-x-2 text-sm sm:text-base cursor-pointer"
               >
                 <MapPin className="w-5 h-5 text-[#006B3C]" />
                 <span>Track Your Complaint</span>
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
 
             {/* Trust and Guarantees Feature Cards */}
-            <div className="pt-4 max-w-4xl border-t border-slate-300/80 mx-auto lg:mx-0">
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={5}
+              className="pt-4 max-w-4xl border-t border-slate-300/80 mx-auto lg:mx-0"
+            >
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 items-stretch">
                 {[
                   { label: '100% Free Service', icon: CheckCircle2 },
@@ -307,8 +317,11 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
                 ].map((item, idx) => {
                   const Icon = item.icon;
                   return (
-                    <div
+                    <motion.div
                       key={idx}
+                      onMouseEnter={() => softHaptic('soft')}
+                      whileHover={{ y: -4, scale: 1.02 }}
+                      transition={{ duration: 0.3, ease: EASE }}
                       className="flex items-center space-x-2.5 h-12 px-3.5 py-2.5 bg-white/90 backdrop-blur-xs rounded-xl border border-slate-200/80 shadow-2xs hover:border-[#138808]/40 hover:bg-white transition-all"
                     >
                       <div className="w-6 h-6 rounded-lg bg-[#138808]/10 flex items-center justify-center flex-shrink-0">
@@ -317,326 +330,279 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
                       <span className="text-xs sm:text-[13px] text-slate-800 font-bold whitespace-nowrap leading-tight">
                         {item.label}
                       </span>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* ========================================================
-          SECTION B: ABOUT JAN SAMADHAN (Digital India, Clean India)
+          SECTION B: ABOUT JAN SAMADHAN
           ======================================================== */}
-      <section id="about" className="py-16 md:py-24 bg-white border-y border-slate-200">
-        <div className="gov-container">
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#138808]/10 text-[#006B3C] border border-[#138808]/20 mb-3 inline-block">
+      <section id="about" className="py-16 md:py-24 bg-white border-y border-slate-200 relative">
+        <div className="gov-container relative">
+          <Reveal className="text-center max-w-3xl mx-auto mb-14">
+            <motion.span
+              variants={scaleIn}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#138808]/10 text-[#006B3C] border border-[#138808]/20 mb-3 inline-block"
+            >
               Empowering Public Service
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-[#102A43] tracking-tight">
+            </motion.span>
+            <motion.h2 variants={fadeUp} className="text-2xl sm:text-4xl font-extrabold text-[#102A43] tracking-tight">
               About JanSamadhan
-            </h2>
-            <div className="w-16 h-1 bg-[#138808] mx-auto mt-3 rounded-full"></div>
-            
-            <p className="mt-5 text-sm sm:text-base text-slate-700 leading-relaxed">
+            </motion.h2>
+            <motion.div variants={fadeUp} className="w-16 h-1 bg-[#138808] mx-auto mt-3 rounded-full" />
+
+            <motion.p variants={fadeUp} className="mt-5 text-sm sm:text-base text-slate-700 leading-relaxed">
               JanSamadhan is an AI-powered national grievance redressal portal built to bridge the gap between Indian citizens and public authorities. Inspired by <strong>Digital India</strong>, <strong>Clean India (Swachh Bharat)</strong>, and transparent civic administration.
-            </p>
-          </div>
+            </motion.p>
+          </Reveal>
 
           {/* 6 Key Objectives */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 mb-16">
-            <div className="p-6 bg-[#F5F9F6] rounded-2xl border border-slate-200 hover:border-[#138808] transition-all hover:shadow-md group">
-              <div className="w-12 h-12 rounded-xl bg-[#138808]/15 flex items-center justify-center text-[#006B3C] mb-4 group-hover:bg-[#138808] group-hover:text-white transition-all">
-                <Users className="w-6 h-6" />
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#102A43] mb-2">1. Accessible Governance</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Empowering all citizens, including rural and non-English speaking communities, to easily interact with public administration.
-              </p>
-            </div>
-
-            <div className="p-6 bg-[#F5F9F6] rounded-2xl border border-slate-200 hover:border-[#138808] transition-all hover:shadow-md group">
-              <div className="w-12 h-12 rounded-xl bg-[#138808]/15 flex items-center justify-center text-[#006B3C] mb-4 group-hover:bg-[#138808] group-hover:text-white transition-all">
-                <Compass className="w-6 h-6" />
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#102A43] mb-2">2. Transparent Tracking</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Complete traceability from registration to final resolution, with every department remark logged in a timestamped audit trail.
-              </p>
-            </div>
-
-            <div className="p-6 bg-[#F5F9F6] rounded-2xl border border-slate-200 hover:border-[#138808] transition-all hover:shadow-md group">
-              <div className="w-12 h-12 rounded-xl bg-[#138808]/15 flex items-center justify-center text-[#006B3C] mb-4 group-hover:bg-[#138808] group-hover:text-white transition-all">
-                <Clock className="w-6 h-6" />
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#102A43] mb-2">3. Rapid Processing</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Eliminating manual sorting and bureaucratic bottlenecks through instant algorithmic triage and priority assignment.
-              </p>
-            </div>
-
-            <div className="p-6 bg-[#F5F9F6] rounded-2xl border border-slate-200 hover:border-[#138808] transition-all hover:shadow-md group">
-              <div className="w-12 h-12 rounded-xl bg-[#138808]/15 flex items-center justify-center text-[#006B3C] mb-4 group-hover:bg-[#138808] group-hover:text-white transition-all">
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#102A43] mb-2">4. AI-Powered Classification</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Natural Language Processing identifies specific categories, urgency, and the exact responsible nodal office automatically.
-              </p>
-            </div>
-
-            <div className="p-6 bg-[#F5F9F6] rounded-2xl border border-slate-200 hover:border-[#138808] transition-all hover:shadow-md group">
-              <div className="w-12 h-12 rounded-xl bg-[#138808]/15 flex items-center justify-center text-[#006B3C] mb-4 group-hover:bg-[#138808] group-hover:text-white transition-all">
-                <Languages className="w-6 h-6" />
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#102A43] mb-2">5. Multilingual Citizen Voice</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Accepting complaints in Hindi, Hinglish, Bhojpuri, and 22 scheduled languages through text or spoken voice messages.
-              </p>
-            </div>
-
-            <div className="p-6 bg-[#F5F9F6] rounded-2xl border border-slate-200 hover:border-[#138808] transition-all hover:shadow-md group">
-              <div className="w-12 h-12 rounded-xl bg-[#138808]/15 flex items-center justify-center text-[#006B3C] mb-4 group-hover:bg-[#138808] group-hover:text-white transition-all">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#102A43] mb-2">6. Strict Accountability</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Strict departmental accountability with escalation alerts, inspection remarks, and closure proof required for every complaint.
-              </p>
-            </div>
-          </div>
+          <motion.div
+            variants={staggerParent}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.2 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 mb-16"
+          >
+            {[
+              { icon: Users, title: '1. Accessible Governance', desc: 'Empowering all citizens, including rural and non-English speaking communities, to easily interact with public administration.' },
+              { icon: Compass, title: '2. Transparent Tracking', desc: 'Complete traceability from registration to final resolution, with every department remark logged in a timestamped audit trail.' },
+              { icon: Clock, title: '3. Rapid Processing', desc: 'Eliminating manual sorting and bureaucratic bottlenecks through instant algorithmic triage and priority assignment.' },
+              { icon: Sparkles, title: '4. AI-Powered Classification', desc: 'Natural Language Processing identifies specific categories, urgency, and the exact responsible nodal office automatically.' },
+              { icon: Languages, title: '5. Multilingual Citizen Voice', desc: 'Accepting complaints in Hindi, Hinglish, Bhojpuri, and 22 scheduled languages through text or spoken voice messages.' },
+              { icon: ShieldCheck, title: '6. Strict Accountability', desc: 'Strict departmental accountability with escalation alerts, inspection remarks, and closure proof required for every complaint.' }
+            ].map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <motion.div
+                  key={idx}
+                  variants={childFade}
+                  onMouseEnter={() => softHaptic('soft')}
+                  whileHover={{ y: -6, boxShadow: '0 16px 40px rgba(16,42,67,0.10)' }}
+                  transition={{ duration: 0.35, ease: EASE }}
+                  className="js-lift p-6 bg-[#F5F9F6] rounded-2xl border border-slate-200 hover:border-[#138808] group"
+                >
+                  <motion.div
+                    whileHover={{ rotate: 6, scale: 1.08 }}
+                    transition={{ duration: 0.4, ease: EASE }}
+                    className="w-12 h-12 rounded-xl bg-[#138808]/15 flex items-center justify-center text-[#006B3C] mb-4 group-hover:bg-[#138808] group-hover:text-white transition-all"
+                  >
+                    <Icon className="w-6 h-6" />
+                  </motion.div>
+                  <h3 className="text-base sm:text-lg font-bold text-[#102A43] mb-2">{item.title}</h3>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+                </motion.div>
+              );
+            })}
+          </motion.div>
 
           {/* Relationship Flow Diagram */}
-          <div className="p-6 sm:p-8 bg-[#102A43] text-white rounded-3xl shadow-xl">
-            <h3 className="text-center font-bold text-base sm:text-xl text-white mb-6">
+          <Reveal className="p-6 sm:p-8 bg-[#102A43] text-white rounded-3xl shadow-xl relative overflow-hidden" variant={scaleIn}>
+            <div className="js-bg-blob" style={{ width: 240, height: 240, background: '#006B3C', top: '-40px', right: '-40px', opacity: 0.25 }} />
+            <h3 className="text-center font-bold text-base sm:text-xl text-white mb-6 relative">
               Citizen ↔ JanSamadhan ↔ Government Department Collaboration
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center text-center">
-              <div className="p-5 bg-white/10 rounded-2xl border border-white/10">
-                <div className="text-3xl mb-2">👥</div>
-                <h4 className="font-extrabold text-[#FF9933] text-base mb-1">1. Citizens of India</h4>
-                <p className="text-xs text-slate-300">
-                  Report civic issues in any language using text, microphone voice input, or photographic evidence.
-                </p>
-              </div>
-
-              <div className="p-5 bg-gradient-to-br from-[#006B3C] to-[#138808] rounded-2xl border border-emerald-400/30 shadow-lg relative">
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FF9933] text-[#102A43] text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  Intelligent Core
-                </span>
-                <div className="text-3xl mb-2">⚡</div>
-                <h4 className="font-extrabold text-white text-base mb-1">2. JanSamadhan Platform</h4>
-                <p className="text-xs text-emerald-100">
-                  NLP translates, standardizes to English, classifies priority, and automatically assigns complaint to the nodal officer.
-                </p>
-              </div>
-
-              <div className="p-5 bg-white/10 rounded-2xl border border-white/10">
-                <div className="text-3xl mb-2">🏛️</div>
-                <h4 className="font-extrabold text-[#FF9933] text-base mb-1">3. Government Departments</h4>
-                <p className="text-xs text-slate-300">
-                  Electricity, Water, PWD, Drainage, and Sanitation officers inspect, update status, and resolve issues transparently.
-                </p>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center text-center relative">
+              {[
+                { emoji: '👥', title: '1. Citizens of India', color: '#FF9933', desc: 'Report civic issues in any language using text, microphone voice input, or photographic evidence.' },
+                { emoji: '⚡', title: '2. JanSamadhan Platform', color: 'gradient', desc: 'NLP translates, standardizes to English, classifies priority, and automatically assigns complaint to the nodal officer.' },
+                { emoji: '🏛️', title: '3. Government Departments', color: '#FF9933', desc: 'Electricity, Water, PWD, Drainage, and Sanitation officers inspect, update status, and resolve issues transparently.' }
+              ].map((c, idx) => (
+                <motion.div
+                  key={idx}
+                  variants={childFade}
+                  whileHover={{ y: -6 }}
+                  transition={{ duration: 0.35, ease: EASE }}
+                  className={
+                    c.color === 'gradient'
+                      ? 'p-5 bg-gradient-to-br from-[#006B3C] to-[#138808] rounded-2xl border border-emerald-400/30 shadow-lg relative'
+                      : 'p-5 bg-white/10 rounded-2xl border border-white/10'
+                  }
+                >
+                  {c.color === 'gradient' && (
+                    <motion.span
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      whileInView={{ scale: 1, opacity: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.5, ease: EASE }}
+                      className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FF9933] text-[#102A43] text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider"
+                    >
+                      Intelligent Core
+                    </motion.span>
+                  )}
+                  <div className="text-3xl mb-2">{c.emoji}</div>
+                  <h4 className="font-extrabold text-base mb-1" style={{ color: c.color === 'gradient' ? '#FFFFFF' : '#FF9933' }}>{c.title}</h4>
+                  <p className="text-xs" style={{ color: c.color === 'gradient' ? '#DCFCE7' : '#CBD5E1' }}>{c.desc}</p>
+                </motion.div>
+              ))}
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ========================================================
           SECTION C: WHY TRUST JAN SAMADHAN?
           ======================================================== */}
-      <section id="trust" className="py-16 md:py-24 bg-[#F5F9F6]">
-        <div className="gov-container">
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FF9933]/15 text-[#102A43] border border-[#FF9933]/30 mb-3 inline-block">
+      <section id="trust" className="py-16 md:py-24 bg-[#F5F9F6] relative">
+        <div className="js-bg-blob" style={{ width: 360, height: 360, background: '#FF9933', top: '20%', right: '-100px', opacity: 0.18 }} />
+        <div className="gov-container relative">
+          <Reveal className="text-center max-w-3xl mx-auto mb-14">
+            <motion.span variants={scaleIn} className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FF9933]/15 text-[#102A43] border border-[#FF9933]/30 mb-3 inline-block">
               Trust &amp; Public Transparency
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-[#102A43] tracking-tight">
+            </motion.span>
+            <motion.h2 variants={fadeUp} className="text-2xl sm:text-4xl font-extrabold text-[#102A43] tracking-tight">
               Building a More Responsive India
-            </h2>
-            <div className="w-16 h-1 bg-[#006B3C] mx-auto mt-3 rounded-full"></div>
-            <p className="mt-4 text-sm sm:text-base text-slate-600">
+            </motion.h2>
+            <motion.div variants={fadeUp} className="w-16 h-1 bg-[#006B3C] mx-auto mt-3 rounded-full" />
+            <motion.p variants={fadeUp} className="mt-4 text-sm sm:text-base text-slate-600">
               JanSamadhan enforces public accountability, rapid response times, and seamless civic problem resolution for every citizen.
-            </p>
-          </div>
+            </motion.p>
+          </Reveal>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-[#006B3C] flex items-center justify-center font-bold">
-                ✓
-              </div>
-              <h3 className="font-bold text-[#102A43] text-base sm:text-lg">Transparent Tracking</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Every grievance is assigned a unique reference ID. Citizens can inspect live progress, assigned officers, and timestamped actions anytime.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-[#006B3C] flex items-center justify-center font-bold">
-                🛡️
-              </div>
-              <h3 className="font-bold text-[#102A43] text-base sm:text-lg">Secure Citizen Accounts</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Direct authentication via Google OAuth 2.0 or Indian mobile number with Bcrypt encryption. High security, zero spam.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-[#006B3C] flex items-center justify-center font-bold">
-                🏛️
-              </div>
-              <h3 className="font-bold text-[#102A43] text-base sm:text-lg">Department-Wise Routing</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Complaints are intelligently routed to the relevant department: Electricity, Water Supply, PWD, Drainage, or Municipal Corporation.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-[#006B3C] flex items-center justify-center font-bold">
-                🌐
-              </div>
-              <h3 className="font-bold text-[#102A43] text-base sm:text-lg">Multilingual Accessibility</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Citizens can write or speak in Hindi, Bhojpuri, Marathi, Bengali, Hinglish, etc. The system generates standardized English for officers.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-[#006B3C] flex items-center justify-center font-bold">
-                📷
-              </div>
-              <h3 className="font-bold text-[#102A43] text-base sm:text-lg">Evidence-Based Grievance</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Attach live photos, documents, and GPS geo-tags to substantiate your complaint and prevent vague or misdirected reports.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-[#006B3C] flex items-center justify-center font-bold">
-                🔔
-              </div>
-              <h3 className="font-bold text-[#102A43] text-base sm:text-lg">Instant Status Updates</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Real-time status changes from Submitted to Under Review, Assigned, In Progress, and Resolved, with official remarks attached.
-              </p>
-            </div>
-          </div>
+          <motion.div
+            variants={staggerParent}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.15 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 relative"
+          >
+            {[
+              { emoji: '✓', title: 'Transparent Tracking', desc: 'Every grievance is assigned a unique reference ID. Citizens can inspect live progress, assigned officers, and timestamped actions anytime.' },
+              { emoji: '🛡️', title: 'Secure Citizen Accounts', desc: 'Direct authentication via Google OAuth 2.0 or Indian mobile number with Bcrypt encryption. High security, zero spam.' },
+              { emoji: '🏛️', title: 'Department-Wise Routing', desc: 'Complaints are intelligently routed to the relevant department: Electricity, Water Supply, PWD, Drainage, or Municipal Corporation.' },
+              { emoji: '🌐', title: 'Multilingual Accessibility', desc: 'Citizens can write or speak in Hindi, Bhojpuri, Marathi, Bengali, Hinglish, etc. The system generates standardized English for officers.' },
+              { emoji: '📷', title: 'Evidence-Based Grievance', desc: 'Attach live photos, documents, and GPS geo-tags to substantiate your complaint and prevent vague or misdirected reports.' },
+              { emoji: '🔔', title: 'Instant Status Updates', desc: 'Real-time status changes from Submitted to Under Review, Assigned, In Progress, and Resolved, with official remarks attached.' }
+            ].map((item, idx) => (
+              <motion.div
+                key={idx}
+                variants={childFade}
+                onMouseEnter={() => softHaptic('soft')}
+                whileHover={{ y: -6, boxShadow: '0 18px 44px rgba(16,42,67,0.10)' }}
+                transition={{ duration: 0.35, ease: EASE }}
+                className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 group"
+              >
+                <motion.div
+                  whileHover={{ scale: 1.12, rotate: 4 }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                  className="w-10 h-10 rounded-lg bg-emerald-50 text-[#006B3C] flex items-center justify-center font-bold text-lg"
+                >
+                  {item.emoji}
+                </motion.div>
+                <h3 className="font-bold text-[#102A43] text-base sm:text-lg">{item.title}</h3>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================================
-          SECTION D: HOW IT WORKS (Visual 4-Step Workflow)
+          SECTION D: HOW IT WORKS
           ======================================================== */}
-      <section id="how-it-works" className="py-16 md:py-24 bg-white border-y border-slate-200">
-        <div className="gov-container">
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#138808]/10 text-[#006B3C] border border-[#138808]/20 mb-3 inline-block">
+      <section id="how-it-works" className="py-16 md:py-24 bg-white border-y border-slate-200 relative">
+        <div className="gov-container relative">
+          <Reveal className="text-center max-w-3xl mx-auto mb-14">
+            <motion.span variants={scaleIn} className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#138808]/10 text-[#006B3C] border border-[#138808]/20 mb-3 inline-block">
               Simple 4-Step Process
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-[#102A43] tracking-tight">
+            </motion.span>
+            <motion.h2 variants={fadeUp} className="text-2xl sm:text-4xl font-extrabold text-[#102A43] tracking-tight">
               How JanSamadhan Works
-            </h2>
-            <div className="w-16 h-1 bg-[#138808] mx-auto mt-3 rounded-full"></div>
-            <p className="mt-4 text-sm sm:text-base text-slate-600">
+            </motion.h2>
+            <motion.div variants={fadeUp} className="w-16 h-1 bg-[#138808] mx-auto mt-3 rounded-full" />
+            <motion.p variants={fadeUp} className="mt-4 text-sm sm:text-base text-slate-600">
               From submission to ground resolution in four transparent, automated steps.
-            </p>
-          </div>
+            </motion.p>
+          </Reveal>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 relative">
-            {/* Step 1 */}
-            <div className="bg-[#F5F9F6] p-6 rounded-2xl border border-slate-200 relative">
-              <div className="flex items-center justify-between mb-4">
-                <span className="w-9 h-9 rounded-xl bg-[#102A43] text-white flex items-center justify-center font-black text-sm">
-                  1
-                </span>
-                <span className="text-[11px] font-bold text-[#FF9933] uppercase">Authentication</span>
-              </div>
-              <h3 className="text-base font-bold text-[#102A43] mb-2">Register or Login</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Citizens create an account or login instantly using Google OAuth 2.0 or their 10-digit Indian mobile number.
-              </p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="bg-[#F5F9F6] p-6 rounded-2xl border border-slate-200 relative">
-              <div className="flex items-center justify-between mb-4">
-                <span className="w-9 h-9 rounded-xl bg-[#006B3C] text-white flex items-center justify-center font-black text-sm">
-                  2
-                </span>
-                <span className="text-[11px] font-bold text-[#138808] uppercase">Submission</span>
-              </div>
-              <h3 className="text-base font-bold text-[#102A43] mb-2">Submit Complaint</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Citizens report issues by typing in any regional language, speaking via microphone voice input, or attaching photos and GPS location.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="bg-[#F5F9F6] p-6 rounded-2xl border border-slate-200 relative">
-              <div className="flex items-center justify-between mb-4">
-                <span className="w-9 h-9 rounded-xl bg-[#FF9933] text-[#102A43] flex items-center justify-center font-black text-sm">
-                  3
-                </span>
-                <span className="text-[11px] font-bold text-amber-700 uppercase">AI Processing</span>
-              </div>
-              <h3 className="text-base font-bold text-[#102A43] mb-2">NLP &amp; Routing</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                The NLP system detects language, standardizes to formal English, categorizes the grievance, and auto-assigns it to the correct department.
-              </p>
-            </div>
-
-            {/* Step 4 */}
-            <div className="bg-[#F5F9F6] p-6 rounded-2xl border border-slate-200 relative">
-              <div className="flex items-center justify-between mb-4">
-                <span className="w-9 h-9 rounded-xl bg-[#138808] text-white flex items-center justify-center font-black text-sm">
-                  4
-                </span>
-                <span className="text-[11px] font-bold text-[#006B3C] uppercase">Resolution</span>
-              </div>
-              <h3 className="text-base font-bold text-[#102A43] mb-2">Track Resolution</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Citizens monitor complaint status in real-time, view official inspection notes, and confirm closure with complete transparency.
-              </p>
-            </div>
-          </div>
+          <motion.div
+            variants={staggerParent}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.15 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 relative"
+          >
+            {[
+              { num: '1', bg: 'bg-[#102A43]', badge: 'Authentication', badgeColor: 'text-[#FF9933]', title: 'Register or Login', desc: 'Citizens create an account or login instantly using Google OAuth 2.0 or their 10-digit Indian mobile number.' },
+              { num: '2', bg: 'bg-[#006B3C]', badge: 'Submission', badgeColor: 'text-[#138808]', title: 'Submit Complaint', desc: 'Citizens report issues by typing in any regional language, speaking via microphone voice input, or attaching photos and GPS location.' },
+              { num: '3', bg: 'bg-[#FF9933]', textDark: true, badge: 'AI Processing', badgeColor: 'text-amber-700', title: 'NLP & Routing', desc: 'The NLP system detects language, standardizes to formal English, categorizes the grievance, and auto-assigns it to the correct department.' },
+              { num: '4', bg: 'bg-[#138808]', badge: 'Resolution', badgeColor: 'text-[#006B3C]', title: 'Track Resolution', desc: 'Citizens monitor complaint status in real-time, view official inspection notes, and confirm closure with complete transparency.' }
+            ].map((step, idx) => (
+              <motion.div
+                key={idx}
+                variants={childFade}
+                onMouseEnter={() => softHaptic('soft')}
+                whileHover={{ y: -8, boxShadow: '0 20px 50px rgba(16,42,67,0.10)' }}
+                transition={{ duration: 0.4, ease: EASE }}
+                className="bg-[#F5F9F6] p-6 rounded-2xl border border-slate-200 relative group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <motion.span
+                    whileHover={{ rotate: 360, scale: 1.1 }}
+                    transition={{ duration: 0.6, ease: EASE }}
+                    className={`w-9 h-9 rounded-xl ${step.bg} ${step.textDark ? 'text-[#102A43]' : 'text-white'} flex items-center justify-center font-black text-sm`}
+                  >
+                    {step.num}
+                  </motion.span>
+                  <span className={`text-[11px] font-bold ${step.badgeColor} uppercase`}>{step.badge}</span>
+                </div>
+                <h3 className="text-base font-bold text-[#102A43] mb-2">{step.title}</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">{step.desc}</p>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
       {/* ========================================================
-          SECTION E: MAIN ACTION SECTION (Most Important Section)
+          SECTION E: MAIN ACTION SECTION
           ======================================================== */}
-      <section id="action-section" className="py-16 md:py-24 bg-gradient-to-b from-[#F5F9F6] via-white to-[#F5F9F6] relative">
-        <div className="gov-container">
-          
+      <section id="action-section" className="py-16 md:py-24 bg-gradient-to-b from-[#F5F9F6] via-white to-[#F5F9F6] relative js-aurora">
+        <div className="js-bg-blob" style={{ width: 320, height: 320, background: '#138808', bottom: '10%', left: '-80px', opacity: 0.18 }} />
+        <div className="js-bg-blob" style={{ width: 280, height: 280, background: '#FF9933', top: '10%', right: '-60px', opacity: 0.18, animationDelay: '5s' }} />
+        <div className="gov-container relative">
+
           {/* Centered Logo & Heading */}
-          <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
-            <div className="flex justify-center mb-1">
+          <Reveal className="text-center max-w-2xl mx-auto mb-12 space-y-3">
+            <motion.div variants={scaleIn} className="flex justify-center mb-1">
               <JanSamadhanLogo size="lg" variant="light" />
-            </div>
-
-            <h2 className="text-2xl sm:text-4xl font-black text-[#102A43] tracking-tight">
+            </motion.div>
+            <motion.h2 variants={fadeUp} className="text-2xl sm:text-4xl font-black text-[#102A43] tracking-tight">
               Your Problem Deserves Attention.
-            </h2>
-
-            <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
+            </motion.h2>
+            <motion.p variants={fadeUp} className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
               Raise a grievance or track an existing one. JanSamadhan makes public service accessible, honest, and swift.
-            </p>
-          </div>
+            </motion.p>
+          </Reveal>
 
           {/* TWO LARGE PREMIUM ACTION CARDS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-stretch">
-            
-            {/* CARD 1: REGISTER A COMPLAINT */}
-            <div className="bg-white rounded-3xl p-6 sm:p-10 border-2 border-emerald-300 shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#138808]/15 to-transparent rounded-bl-full pointer-events-none"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-stretch relative">
 
-              <div className="space-y-4">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#138808]/15 flex items-center justify-center text-[#006B3C] group-hover:scale-105 transition-transform">
+            {/* CARD 1: REGISTER A COMPLAINT */}
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.2 }}
+              onMouseEnter={() => softHaptic('soft')}
+              whileHover={{ y: -8, boxShadow: '0 24px 60px rgba(19,136,8,0.20)' }}
+              transition={{ duration: 0.4, ease: EASE }}
+              className="bg-white rounded-3xl p-6 sm:p-10 border-2 border-emerald-300 shadow-xl group relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#138808]/15 to-transparent rounded-bl-full pointer-events-none" />
+              <div className="space-y-4 relative">
+                <motion.div
+                  whileHover={{ rotate: 6, scale: 1.08 }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#138808]/15 flex items-center justify-center text-[#006B3C] group-hover:scale-105 transition-transform"
+                >
                   <FileText className="w-7 h-7 sm:w-8 sm:h-8" />
-                </div>
+                </motion.div>
 
                 <div className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-[#138808]/10 text-[#006B3C]">
                   Citizen Grievance Filing
@@ -666,25 +632,42 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
                 </ul>
               </div>
 
-              <div className="pt-6 mt-4 border-t border-slate-100">
-                <button
-                  onClick={() => handleAction('register')}
-                  className="w-full py-4 px-6 bg-[#138808] hover:bg-[#006B3C] text-white font-extrabold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2 text-base cursor-pointer"
+              <div className="pt-6 mt-4 border-t border-slate-100 relative">
+                <motion.button
+                  onMouseMove={handleBtnMove}
+                  onClick={withHaptic('medium', () => handleAction('register'))}
+                  whileHover={{ y: -2, boxShadow: '0 14px 36px rgba(19,136,8,0.32)' }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  className="js-btn-primary w-full py-4 px-6 bg-[#138808] hover:bg-[#006B3C] text-white font-extrabold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2 text-base cursor-pointer"
                 >
-                  <span>Register Complaint</span>
-                  <ArrowRight className="w-5 h-5 ml-1" />
-                </button>
+                  <span className="relative z-10">Register Complaint</span>
+                  <ArrowRight className="w-5 h-5 ml-1 relative z-10" />
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
 
             {/* CARD 2: TRACK YOUR COMPLAINT */}
-            <div className="bg-white rounded-3xl p-6 sm:p-10 border-2 border-slate-200 hover:border-[#102A43] shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#102A43]/10 to-transparent rounded-bl-full pointer-events-none"></div>
-
-              <div className="space-y-4">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#102A43]/10 flex items-center justify-center text-[#102A43] group-hover:scale-105 transition-transform">
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.2 }}
+              custom={1}
+              onMouseEnter={() => softHaptic('soft')}
+              whileHover={{ y: -8, boxShadow: '0 24px 60px rgba(16,42,67,0.20)' }}
+              transition={{ duration: 0.4, ease: EASE }}
+              className="bg-white rounded-3xl p-6 sm:p-10 border-2 border-slate-200 hover:border-[#102A43] shadow-xl group relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#102A43]/10 to-transparent rounded-bl-full pointer-events-none" />
+              <div className="space-y-4 relative">
+                <motion.div
+                  whileHover={{ rotate: -6, scale: 1.08 }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#102A43]/10 flex items-center justify-center text-[#102A43] group-hover:scale-105 transition-transform"
+                >
                   <MapPin className="w-7 h-7 sm:w-8 sm:h-8 text-[#102A43]" />
-                </div>
+                </motion.div>
 
                 <div className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-[#102A43]/10 text-[#102A43]">
                   Live Audit &amp; Status Check
@@ -714,16 +697,20 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
                 </ul>
               </div>
 
-              <div className="pt-6 mt-4 border-t border-slate-100">
-                <button
-                  onClick={() => handleAction('track')}
-                  className="w-full py-4 px-6 bg-[#102A43] hover:bg-slate-800 text-white font-extrabold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2 text-base cursor-pointer"
+              <div className="pt-6 mt-4 border-t border-slate-100 relative">
+                <motion.button
+                  onMouseMove={handleBtnMove}
+                  onClick={withHaptic('medium', () => handleAction('track'))}
+                  whileHover={{ y: -2, boxShadow: '0 14px 36px rgba(16,42,67,0.30)' }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  className="js-btn-primary w-full py-4 px-6 bg-[#102A43] hover:bg-slate-800 text-white font-extrabold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2 text-base cursor-pointer"
                 >
-                  <MapPin className="w-5 h-5 mr-1 text-[#FF9933]" />
-                  <span>Track Your Complaint</span>
-                </button>
+                  <MapPin className="w-5 h-5 mr-1 text-[#FF9933] relative z-10" />
+                  <span className="relative z-10">Track Your Complaint</span>
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
 
           </div>
 
@@ -736,8 +723,9 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
       {/* ========================================================
           FOOTER & CONTACT SECTION
           ======================================================== */}
-      <footer id="contact" className="mt-auto bg-[#102A43] text-slate-300 text-xs border-t border-slate-800">
-        <div className="gov-container py-12">
+      <footer id="contact" className="mt-auto bg-[#102A43] text-slate-300 text-xs border-t border-slate-800 relative overflow-hidden">
+        <div className="js-bg-blob" style={{ width: 300, height: 300, background: '#006B3C', bottom: '-100px', right: '5%', opacity: 0.15 }} />
+        <div className="gov-container py-12 relative">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
             <div className="space-y-3">
               <JanSamadhanLogo size="md" variant="dark" />

@@ -158,3 +158,226 @@
     padding-right: 2.5rem;
   }
 }
+/* ============================================================
+   JanSamadhan — Premium UI Tokens & Animations
+   Drop these snippets into your existing src/index.css
+   (merge with what's already there; nothing is removed).
+   ============================================================ */
+
+/* ---------- Design Tokens ---------- */
+:root {
+  --js-saffron: #FF9933;
+  --js-saffron-deep: #E68A2E;
+  --js-green: #138808;
+  --js-green-deep: #006B3C;
+  --js-navy: #102A43;
+  --js-navy-soft: #1E3A5F;
+  --js-cream: #F5F9F6;
+  --js-white: #FFFFFF;
+
+  --js-shadow-sm: 0 1px 2px rgba(16, 42, 67, 0.06), 0 1px 3px rgba(16, 42, 67, 0.08);
+  --js-shadow-md: 0 4px 12px rgba(16, 42, 67, 0.08), 0 2px 6px rgba(16, 42, 67, 0.05);
+  --js-shadow-lg: 0 12px 32px rgba(16, 42, 67, 0.12), 0 4px 12px rgba(16, 42, 67, 0.06);
+  --js-shadow-glow-green: 0 8px 28px rgba(19, 136, 8, 0.28);
+  --js-shadow-glow-saffron: 0 8px 28px rgba(255, 153, 51, 0.32);
+  --js-shadow-glow-navy: 0 8px 28px rgba(16, 42, 67, 0.22);
+
+  --js-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --js-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --js-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---------- Tricolor Stripe (top + bottom) ---------- */
+.tricolor-stripe {
+  background: linear-gradient(
+    90deg,
+    var(--js-saffron) 0%,
+    var(--js-saffron) 33%,
+    var(--js-white) 33%,
+    var(--js-white) 66%,
+    var(--js-green) 66%,
+    var(--js-green) 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+.tricolor-stripe::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: tricolor-shimmer 6s var(--js-ease) infinite;
+}
+@keyframes tricolor-shimmer {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ---------- Container ---------- */
+.gov-container {
+  width: 100%;
+  max-width: 80rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 640px)  { .gov-container { padding-left: 1.5rem; padding-right: 1.5rem; } }
+@media (min-width: 1024px) { .gov-container { padding-left: 2.5rem; padding-right: 2.5rem; } }
+
+/* ---------- Premium scrollbar ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--js-cream); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--js-saffron), var(--js-green));
+  border-radius: 999px;
+  border: 2px solid var(--js-cream);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--js-saffron-deep), var(--js-green-deep));
+}
+* { scrollbar-color: var(--js-green) var(--js-cream); }
+
+/* ---------- Selection ---------- */
+::selection {
+  background: rgba(19, 136, 8, 0.18);
+  color: var(--js-green-deep);
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes js-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+@keyframes js-pulse-ring {
+  0%   { transform: scale(0.85); opacity: 0.6; }
+  70%  { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes js-blob-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(30px, -20px) scale(1.05); }
+  66%  { transform: translate(-20px, 20px) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes js-shimmer-text {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes js-gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+@keyframes js-count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Utility classes ---------- */
+.js-glow-green   { box-shadow: var(--js-shadow-glow-green); }
+.js-glow-saffron { box-shadow: var(--js-shadow-glow-saffron); }
+.js-glow-navy    { box-shadow: var(--js-shadow-glow-navy); }
+
+.js-text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--js-saffron) 0%,
+    var(--js-saffron-deep) 25%,
+    #FFD9A0 50%,
+    var(--js-saffron-deep) 75%,
+    var(--js-saffron) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: js-shimmer-text 5s linear infinite;
+}
+
+.js-aurora {
+  background: linear-gradient(
+    120deg,
+    #F5F9F6 0%,
+    #FFFFFF 30%,
+    #FFF4E6 50%,
+    #FFFFFF 70%,
+    #ECFDF5 100%
+  );
+  background-size: 300% 300%;
+  animation: js-gradient-shift 14s var(--js-ease) infinite;
+}
+
+.js-bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.45;
+  pointer-events: none;
+  animation: js-blob-drift 18s var(--js-ease) infinite;
+  z-index: 0;
+}
+
+/* ---------- Glass card ---------- */
+.js-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+/* ---------- Magnetic / glow on hover for primary buttons ---------- */
+.js-btn-primary {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.js-btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%),
+              rgba(255, 255, 255, 0.35) 0%,
+              transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s var(--js-ease);
+  z-index: 1;
+}
+.js-btn-primary:hover::before { opacity: 1; }
+.js-btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.7s var(--js-ease);
+  z-index: 2;
+}
+.js-btn-primary:hover::after { left: 120%; }
+
+/* ---------- Card lift ---------- */
+.js-lift {
+  transition: transform 0.45s var(--js-ease), box-shadow 0.45s var(--js-ease);
+}
+.js-lift:hover {
+  transform: translateY(-6px);
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
