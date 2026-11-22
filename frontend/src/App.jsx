@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import LandingPage from './pages/LandingPage';
+import AboutPage from './pages/AboutPage';
+import WhyTrustPage from './pages/WhyTrustPage';
+import HowItWorksPage from './pages/HowItWorksPage';
+import ServicesPage from './pages/ServicesPage';
+import ContactPage from './pages/ContactPage';
 import AuthPage from './pages/AuthPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import CitizenDashboard from './pages/CitizenDashboard';
@@ -78,6 +83,12 @@ function getInitialRoute(user) {
     return { page: 'auth', intent: 'login', path: '/login' };
   }
 
+  if (path === '/about') return { page: 'about', intent: 'register', path: '/about' };
+  if (path === '/why-trust') return { page: 'why-trust', intent: 'register', path: '/why-trust' };
+  if (path === '/how-it-works') return { page: 'how-it-works', intent: 'register', path: '/how-it-works' };
+  if (path === '/services') return { page: 'services', intent: 'register', path: '/services' };
+  if (path === '/contact') return { page: 'contact', intent: 'register', path: '/contact' };
+
   return { page: 'landing', intent: 'register', path: '/' };
 }
 
@@ -99,6 +110,16 @@ function pageToPath(page, options = {}) {
       if (options.targetIntent === 'register') return '/register';
       if (options.targetIntent === 'officer') return '/login?intent=officer';
       return '/login';
+    case 'about':
+      return '/about';
+    case 'why-trust':
+      return '/why-trust';
+    case 'how-it-works':
+      return '/how-it-works';
+    case 'services':
+      return '/services';
+    case 'contact':
+      return '/contact';
     case 'landing':
     default:
       return '/';
@@ -234,6 +255,9 @@ export default function App() {
       targetPage = 'auth';
       targetIntent = options.targetIntent || 'login';
       targetPath = targetPath || (targetIntent === 'register' ? '/register' : (targetIntent === 'officer' ? '/login?intent=officer' : '/login'));
+    } else if (['about', 'why-trust', 'how-it-works', 'services', 'contact'].includes(page)) {
+      targetPage = page;
+      targetPath = targetPath || pageToPath(page);
     } else if (page === 'landing') {
       targetPage = 'landing';
       targetPath = targetPath || '/';
@@ -339,6 +363,22 @@ export default function App() {
           onLogout={handleLogout}
           onNavigate={handleNavigate}
         />
+      )}
+
+      {currentPage === 'about' && (
+        <AboutPage currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
+      )}
+      {currentPage === 'why-trust' && (
+        <WhyTrustPage currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
+      )}
+      {currentPage === 'how-it-works' && (
+        <HowItWorksPage currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
+      )}
+      {currentPage === 'services' && (
+        <ServicesPage currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
+      )}
+      {currentPage === 'contact' && (
+        <ContactPage currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
       )}
 
       {/* 2. Dedicated Admin Login Page (Route: /admin/login) */}
