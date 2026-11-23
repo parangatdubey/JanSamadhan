@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import SplashScreen from './components/SplashScreen';
 import LandingPage from './pages/LandingPage';
 import AboutPage from './pages/AboutPage';
 import WhyTrustPage from './pages/WhyTrustPage';
@@ -384,6 +385,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F5F9F6] text-[#102A43]">
+      {/* Official Government Intro / Splash Screen (Appears once per session) */}
+      <SplashScreen showOnce={true} />
+
       {/* 1. Landing Page */}
       {currentPage === 'landing' && (
         <LandingPage
