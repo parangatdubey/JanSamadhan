@@ -35,13 +35,40 @@ function getInitialUser() {
 }
 
 /**
+ * Base path helper supporting GitHub Pages subpath (e.g. /JanSamadhan/) and local development
+ */
+const BASE_PATH = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+
+function normalizePath(pathname) {
+  let path = pathname || '/';
+  if (BASE_PATH && path.toLowerCase().startsWith(BASE_PATH.toLowerCase())) {
+    path = path.slice(BASE_PATH.length);
+  }
+  if (!path.startsWith('/')) {
+    path = '/' + path;
+  }
+  return path.toLowerCase();
+}
+
+function getAppPath(internalPath) {
+  let path = internalPath || '/';
+  if (!path.startsWith('/')) {
+    path = '/' + path;
+  }
+  if (BASE_PATH && path.toLowerCase().startsWith(BASE_PATH.toLowerCase())) {
+    return path;
+  }
+  return BASE_PATH + path;
+}
+
+/**
  * Maps browser pathname on first load to the corresponding internal page and intent
  */
 function getInitialRoute(user) {
   if (typeof window === 'undefined') {
     return { page: 'landing', intent: 'register', path: '/' };
   }
-  const path = window.location.pathname.toLowerCase();
+  const path = normalizePath(window.location.pathname);
 
   if (path === '/admin/login') {
     return { page: 'admin-login', intent: 'admin', path: '/admin/login' };
@@ -72,7 +99,7 @@ function getInitialRoute(user) {
   if (path === '/login') {
     const searchParams = new URLSearchParams(window.location.search);
     const intent = searchParams.get('intent') === 'officer' ? 'officer' : 'login';
-    return { page: 'auth', intent, path: window.location.pathname + window.location.search };
+    return { page: 'auth', intent, path: '/login' + window.location.search };
   }
 
   if (path === '/register') {
@@ -127,13 +154,14 @@ function pageToPath(page, options = {}) {
 }
 
 /**
- * Updates browser history without page reload
+ * Updates browser history without page reload, correctly accounting for base path
  */
 function syncUrl(targetPath) {
   if (typeof window === 'undefined') return;
+  const fullPath = getAppPath(targetPath);
   const current = window.location.pathname + window.location.search;
-  if (current !== targetPath) {
-    window.history.pushState(null, '', targetPath);
+  if (current !== fullPath) {
+    window.history.pushState(null, '', fullPath);
   }
 }
 

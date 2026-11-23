@@ -1,6 +1,8 @@
-const API_BASE_URL = typeof window !== 'undefined'
+const rawApiUrl = typeof window !== 'undefined'
   ? (import.meta.env.VITE_API_BASE_URL !== undefined ? import.meta.env.VITE_API_BASE_URL : '')
   : (typeof process !== 'undefined' && process.env && process.env.VITE_API_BASE_URL ? process.env.VITE_API_BASE_URL : '');
+
+const API_BASE_URL = (rawApiUrl || '').replace(/\/$/, '');
 
 /**
  * Intelligently extracts human-readable error messages from HTTP error responses
