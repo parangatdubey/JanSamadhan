@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import SplashScreen from './components/SplashScreen';
 import LandingPage from './pages/LandingPage';
 import AboutPage from './pages/AboutPage';
 import WhyTrustPage from './pages/WhyTrustPage';
@@ -355,7 +356,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F9F6] text-[#102A43]">
+    <>
+      <SplashScreen onDone={() => {}} />
+      <div className="min-h-screen bg-[#F5F9F6] text-[#102A43]">
       {/* 1. Landing Page */}
       {currentPage === 'landing' && (
         <LandingPage
@@ -479,6 +482,7 @@ export default function App() {
           <span>{isBackendConnected ? 'JanSamadhan Live Backend Active' : 'Connecting to Server...'}</span>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
