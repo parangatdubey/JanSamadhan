@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { softHaptic } from '../utils/haptics';
 import JanSamadhanLogo from './JanSamadhanLogo';
@@ -6,33 +6,32 @@ import JanSamadhanLogo from './JanSamadhanLogo';
 /**
  * SplashScreen
  *
- * Dignified, government-style portal introduction for JanSamadhan:
- *   ┌────────────────────────────────────────────────────────┐
- *   │  [JanSamadhan Logo]              [Skip Intro ->]       │
- *   │                                                        │
- *   │     [Official Civic Emblem / Dharma Chakra Seal]       │
- *   │                                                        │
- *   │  [Digital India Logo]                                  │
- *   │  [=== Tricolor Loading Progress Bar ===]               │
- *   └────────────────────────────────────────────────────────┘
+ * Government-style introduction screen for JanSamadhan Portal.
  *
- * Lifecycle:
- *   - Runs once per browser session (recorded in sessionStorage).
- *   - Total duration: ~5.3s (progress bar reaches 100% at ~4.8s, then smooth fade/blur exit).
- *   - User can skip at any time using the "Skip Intro" button.
- *   - Gracefully handles missing or slow image assets with authentic vector fallbacks.
- *   - Zero DOM interference or route disruption once dismissed.
+ * Lifecycle & Reliability:
+ *   - Stable interval & watchdog timer based on wall-clock time (Date.now()).
+ *   - Guaranteed progress forward progression: 0% -> 100% reliably.
+ *   - Non-blocking: missing or slow images NEVER block progress or exit.
+ *   - Double-guarded exit: automatic transition at completion + master fallback timer.
+ *   - Instant "Skip Intro" option.
+ *   - Session-persisted via sessionStorage ('jansamadhan_splash_seen').
  */
 
 const EASE = [0.22, 1, 0.36, 1];
 const EASE_SPRING = [0.34, 1.56, 0.64, 1];
 
 export default function SplashScreen({
-  onDone = () => {},
-  duration = 5300,
+  onDone,
+  duration = 4200,
   showOnce = true
 }) {
-  // Synchronous initialization prevents 1-frame flash on session reloads
+  // Store onDone in a ref so changes never re-trigger or cancel the timer effect
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
+
+  // Synchronous initial check prevents 1-frame flicker if already viewed
   const [visible, setVisible] = useState(() => {
     if (showOnce && typeof window !== 'undefined') {
       try {
@@ -45,58 +44,77 @@ export default function SplashScreen({
   });
 
   const [progress, setProgress] = useState(0);
+  const hasFinishedRef = useRef(false);
 
-  const markSeenAndFinish = useCallback(() => {
+  // Guaranteed single-execution finish callback
+  const finish = useCallback(() => {
+    if (hasFinishedRef.current) return;
+    hasFinishedRef.current = true;
+
     if (showOnce && typeof window !== 'undefined') {
       try {
         sessionStorage.setItem('jansamadhan_splash_seen', '1');
       } catch (_) {}
     }
-    onDone();
-  }, [showOnce, onDone]);
 
+    if (typeof onDoneRef.current === 'function') {
+      try {
+        onDoneRef.current();
+      } catch (err) {
+        console.warn('SplashScreen onDone error:', err);
+      }
+    }
+  }, [showOnce]);
+
+  // Instant skip handler
   const handleSkip = useCallback(() => {
     softHaptic('tick');
     setVisible(false);
-    markSeenAndFinish();
-  }, [markSeenAndFinish]);
+    finish();
+  }, [finish]);
 
   useEffect(() => {
-    // If already marked as seen, exit immediately
+    // If not visible initially, finish immediately
     if (!visible) {
-      const t = setTimeout(() => onDone(), 0);
-      return () => clearTimeout(t);
+      finish();
+      return;
     }
 
     softHaptic('selection');
 
-    const exitAt = Math.max(1000, duration - 500);
-    const doneAt = duration + 200;
+    const totalDuration = Math.max(1800, duration);
+    const fadeOutAt = Math.max(1200, totalDuration - 600);
+    const startTime = Date.now();
 
-    // Progress bar animation 0 -> 100%
-    const start = Date.now();
-    const visibleMs = exitAt;
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const pct = Math.min(100, Math.round((elapsed / visibleMs) * 100));
-      setProgress(pct);
-      if (pct >= 100) clearInterval(interval);
-    }, 50);
+    // Wall-clock based interval guarantees forward progression without drift
+    const intervalId = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const currentPct = Math.min(100, Math.round((elapsed / fadeOutAt) * 100));
+      setProgress(currentPct);
 
-    const t1 = setTimeout(() => setVisible(false), exitAt);
-    const t2 = setTimeout(() => {
-      markSeenAndFinish();
-    }, doneAt);
+      if (elapsed >= fadeOutAt) {
+        clearInterval(intervalId);
+        setProgress(100);
+        setVisible(false);
+      }
+    }, 40);
+
+    // Master watchdog timeout: guarantees completion even if interval throttles
+    const watchdogId = setTimeout(() => {
+      clearInterval(intervalId);
+      setProgress(100);
+      setVisible(false);
+      finish();
+    }, totalDuration + 600);
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearInterval(interval);
+      clearInterval(intervalId);
+      clearTimeout(watchdogId);
     };
-  }, [visible, duration, markSeenAndFinish, onDone]);
+  }, [visible, duration, finish]);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={finish}>
       {visible && (
         <motion.div
           initial={{ opacity: 1 }}
@@ -128,17 +146,17 @@ export default function SplashScreen({
             style={{ transformOrigin: 'right center' }}
           />
 
-          {/* Top Skip Button */}
+          {/* Top-right Skip Button */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
             className="absolute top-4 right-4 z-20"
           >
             <button
               onClick={handleSkip}
               type="button"
-              className="px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 bg-white/80 hover:bg-white hover:text-slate-900 border border-slate-300/80 shadow-xs backdrop-blur-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-700 bg-white/85 hover:bg-white hover:text-slate-900 border border-slate-300 shadow-xs backdrop-blur-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
               aria-label="Skip splash screen"
             >
               Skip Intro &rarr;
@@ -149,7 +167,7 @@ export default function SplashScreen({
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.7, ease: EASE, delay: 0.3 }}
+            transition={{ duration: 0.7, ease: EASE, delay: 0.2 }}
             className="relative z-10 mt-1"
           >
             <JanSamadhanLogo size="lg" variant="light" showTagline={true} />
@@ -157,9 +175,9 @@ export default function SplashScreen({
 
           {/* ============ CENTER: Ashoka Emblem / Civic Seal ============ */}
           <motion.div
-            initial={{ scale: 0.6, opacity: 0, rotate: -15 }}
+            initial={{ scale: 0.65, opacity: 0, rotate: -15 }}
             animate={{ scale: 1, opacity: 1, rotate: 0 }}
-            transition={{ duration: 0.9, ease: EASE_SPRING, delay: 0.4 }}
+            transition={{ duration: 0.85, ease: EASE_SPRING, delay: 0.3 }}
             className="relative flex-1 flex items-center justify-center my-2"
           >
             {/* Animated Pulse Rings */}
@@ -183,7 +201,7 @@ export default function SplashScreen({
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.7, ease: EASE, delay: 0.6 }}
+            transition={{ duration: 0.7, ease: EASE, delay: 0.5 }}
             className="relative z-10 flex flex-col items-center mb-1 w-full max-w-xs"
           >
             <DigitalIndiaLogo />
@@ -215,19 +233,37 @@ export default function SplashScreen({
 /**
  * AshokaEmblemDisplay
  *
- * Preloads the official Ashoka Lion Capital PNG if present in /public.
- * If the PNG asset is missing or blocked, gracefully renders the authentic
- * Civic Dharma Chakra seal with Satyameva Jayate to avoid broken images.
+ * Asynchronously checks for the official Ashoka Lion Capital PNG in /public.
+ * Protected with an 800ms abort timer so missing or slow assets NEVER block
+ * the portal or cause broken image displays.
  */
 function AshokaEmblemDisplay() {
   const [useAsset, setUseAsset] = useState(false);
   const rawSrc = `${import.meta.env.BASE_URL}Ashoka emblem.png`;
 
   useEffect(() => {
+    let active = true;
     const img = new Image();
-    img.onload = () => setUseAsset(true);
-    img.onerror = () => setUseAsset(false);
+
+    // 800ms abort timeout: if image hasn't loaded, safely default to SVG
+    const timer = setTimeout(() => {
+      if (active) setUseAsset(false);
+    }, 800);
+
+    img.onload = () => {
+      clearTimeout(timer);
+      if (active) setUseAsset(true);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      if (active) setUseAsset(false);
+    };
     img.src = rawSrc;
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [rawSrc]);
 
   if (useAsset) {
@@ -248,11 +284,10 @@ function AshokaEmblemDisplay() {
 /**
  * CivicDharmaChakraSeal
  *
- * Authentic, dignified government portal medallion adhering strictly to:
+ * Dignified official government portal medallion adhering strictly to:
  * - Mathematical 24-spoke Ashoka Chakra (Dharma Chakra) in official Navy Blue (#000080).
  * - Sacred National Motto "सत्यमेव जयते" (Satyameva Jayate) in Devanagari script.
  * - Double concentric ceremonial bronze/gold borders and clean administrative typography.
- * - Does not fabricate unofficial lion drawings, maintaining complete respect.
  */
 function CivicDharmaChakraSeal() {
   return (
@@ -373,18 +408,35 @@ function CivicDharmaChakraSeal() {
 /**
  * DigitalIndiaLogo
  *
- * Preloads the official Digital India PNG if present in /public.
- * If missing, falls back to the official geometry inline SVG logo with tagline.
+ * Asynchronously checks for the official Digital India PNG in /public.
+ * Protected with an 800ms abort timer so missing assets fall back seamlessly.
  */
 function DigitalIndiaLogo() {
   const [useAsset, setUseAsset] = useState(false);
   const rawSrc = `${import.meta.env.BASE_URL}digital-india.png`;
 
   useEffect(() => {
+    let active = true;
     const img = new Image();
-    img.onload = () => setUseAsset(true);
-    img.onerror = () => setUseAsset(false);
+
+    const timer = setTimeout(() => {
+      if (active) setUseAsset(false);
+    }, 800);
+
+    img.onload = () => {
+      clearTimeout(timer);
+      if (active) setUseAsset(true);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      if (active) setUseAsset(false);
+    };
     img.src = rawSrc;
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [rawSrc]);
 
   if (useAsset) {
