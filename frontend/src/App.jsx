@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import SplashScreen from './components/SplashScreen';
 import LandingPage from './pages/LandingPage';
 import AboutPage from './pages/AboutPage';
 import WhyTrustPage from './pages/WhyTrustPage';
@@ -11,6 +10,7 @@ import AdminLoginPage from './pages/AdminLoginPage';
 import CitizenDashboard from './pages/CitizenDashboard';
 import OfficerDashboard from './pages/OfficerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import SplashScreen from './components/SplashScreen';
 import {
   fetchComplaints,
   updateComplaintStatus,
@@ -52,7 +52,6 @@ function getInitialRoute(user) {
     if (user && user.role === 'ADMIN') {
       return { page: 'admin-dashboard', intent: 'admin', path: '/admin/dashboard' };
     }
-    // Unauthorized access falls back to dedicated Admin Login
     return { page: 'admin-login', intent: 'admin', path: '/admin/login' };
   }
 
@@ -84,11 +83,12 @@ function getInitialRoute(user) {
     return { page: 'auth', intent: 'login', path: '/login' };
   }
 
-  if (path === '/about') return { page: 'about', intent: 'register', path: '/about' };
-  if (path === '/why-trust') return { page: 'why-trust', intent: 'register', path: '/why-trust' };
-  if (path === '/how-it-works') return { page: 'how-it-works', intent: 'register', path: '/how-it-works' };
-  if (path === '/services') return { page: 'services', intent: 'register', path: '/services' };
-  if (path === '/contact') return { page: 'contact', intent: 'register', path: '/contact' };
+  // ===== Public info pages =====
+  if (path === '/about')           return { page: 'about',         intent: 'register', path: '/about' };
+  if (path === '/why-trust')       return { page: 'why-trust',     intent: 'register', path: '/why-trust' };
+  if (path === '/how-it-works')    return { page: 'how-it-works',  intent: 'register', path: '/how-it-works' };
+  if (path === '/services')        return { page: 'services',      intent: 'register', path: '/services' };
+  if (path === '/contact')         return { page: 'contact',       intent: 'register', path: '/contact' };
 
   return { page: 'landing', intent: 'register', path: '/' };
 }
@@ -256,7 +256,8 @@ export default function App() {
       targetPage = 'auth';
       targetIntent = options.targetIntent || 'login';
       targetPath = targetPath || (targetIntent === 'register' ? '/register' : (targetIntent === 'officer' ? '/login?intent=officer' : '/login'));
-    } else if (['about', 'why-trust', 'how-it-works', 'services', 'contact'].includes(page)) {
+    } else if (page === 'about' || page === 'why-trust' || page === 'how-it-works' || page === 'services' || page === 'contact') {
+      // Public info pages — no auth required
       targetPage = page;
       targetPath = targetPath || pageToPath(page);
     } else if (page === 'landing') {
@@ -357,66 +358,68 @@ export default function App() {
 
   return (
     <>
+      {/* Government-style intro splash — plays once per session, overlays everything */}
       <SplashScreen onDone={() => {}} />
+
       <div className="min-h-screen bg-[#F5F9F6] text-[#102A43]">
-      {/* 1. Landing Page */}
-      {currentPage === 'landing' && (
-        <LandingPage
-          currentUser={currentUser}
-          onLogout={handleLogout}
-          onNavigate={handleNavigate}
-        />
-      )}
-
-      {currentPage === 'about' && (
-        <AboutPage currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
-      )}
-      {currentPage === 'why-trust' && (
-        <WhyTrustPage currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
-      )}
-      {currentPage === 'how-it-works' && (
-        <HowItWorksPage currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
-      )}
-      {currentPage === 'services' && (
-        <ServicesPage currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
-      )}
-      {currentPage === 'contact' && (
-        <ContactPage currentUser={currentUser} onNavigate={handleNavigate} onLogout={handleLogout} />
-      )}
-
-      {/* 2. Dedicated Admin Login Page (Route: /admin/login) */}
-      {currentPage === 'admin-login' && (
-        <AdminLoginPage
-          currentUser={currentUser}
-          onLogout={handleLogout}
-          onLoginSuccess={handleLoginSuccess}
-          onNavigate={handleNavigate}
-        />
-      )}
-
-      {/* 3. Main Auth Page (Citizen Login & Officer Login, with Admin banner & footer) */}
-      {(currentPage === 'auth' || currentPage === 'login' || currentPage === 'register') && (
-        <AuthPage
-          currentUser={currentUser}
-          onLogout={handleLogout}
-          targetIntent={authIntent}
-          onLoginSuccess={handleLoginSuccess}
-          onNavigate={handleNavigate}
-        />
-      )}
-
-      {/* 4. Citizen Dashboard */}
-      {currentPage === 'citizen-dashboard' && (
-        currentUser ? (
-          <CitizenDashboard
-            user={currentUser}
-            initialTab={citizenInitialTab}
-            complaints={complaints}
-            onAddComplaint={handleAddComplaint}
+        {/* 1. Landing Page */}
+        {currentPage === 'landing' && (
+          <LandingPage
+            currentUser={currentUser}
             onLogout={handleLogout}
-            onNavigateHome={() => handleNavigate('landing')}
+            onNavigate={handleNavigate}
           />
-        ) : (
+        )}
+
+        {/* 1b. Public info pages — each on its own route, with shared Navbar + Footer */}
+        {currentPage === 'about' && (
+          <AboutPage
+            currentUser={currentUser}
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        )}
+        {currentPage === 'why-trust' && (
+          <WhyTrustPage
+            currentUser={currentUser}
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        )}
+        {currentPage === 'how-it-works' && (
+          <HowItWorksPage
+            currentUser={currentUser}
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        )}
+        {currentPage === 'services' && (
+          <ServicesPage
+            currentUser={currentUser}
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        )}
+        {currentPage === 'contact' && (
+          <ContactPage
+            currentUser={currentUser}
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        )}
+
+        {/* 2. Dedicated Admin Login Page (Route: /admin/login) */}
+        {currentPage === 'admin-login' && (
+          <AdminLoginPage
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            onLoginSuccess={handleLoginSuccess}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {/* 3. Main Auth Page (Citizen Login & Officer Login, with Admin banner & footer) */}
+        {(currentPage === 'auth' || currentPage === 'login' || currentPage === 'register') && (
           <AuthPage
             currentUser={currentUser}
             onLogout={handleLogout}
@@ -424,64 +427,85 @@ export default function App() {
             onLoginSuccess={handleLoginSuccess}
             onNavigate={handleNavigate}
           />
-        )
-      )}
+        )}
 
-      {/* 5. Officer Dashboard (Role Guard: OFFICER or ADMIN) */}
-      {currentPage === 'officer-dashboard' && (
-        currentUser && (currentUser.role === 'OFFICER' || currentUser.role === 'ADMIN') ? (
-          <OfficerDashboard
-            user={currentUser}
-            complaints={complaints.filter(c =>
-              currentUser.department
-                ? (c.assigned_department === currentUser.department || c.department === currentUser.department)
-                : true
-            )}
-            onUpdateStatus={handleUpdateStatus}
-            onLogout={handleLogout}
-            onNavigateHome={() => handleNavigate('landing')}
-          />
-        ) : (
-          <AuthPage
-            currentUser={currentUser}
-            onLogout={handleLogout}
-            targetIntent="officer"
-            onLoginSuccess={handleLoginSuccess}
-            onNavigate={handleNavigate}
-          />
-        )
-      )}
+        {/* 4. Citizen Dashboard */}
+        {currentPage === 'citizen-dashboard' && (
+          currentUser ? (
+            <CitizenDashboard
+              user={currentUser}
+              initialTab={citizenInitialTab}
+              complaints={complaints}
+              onAddComplaint={handleAddComplaint}
+              onLogout={handleLogout}
+              onNavigateHome={() => handleNavigate('landing')}
+            />
+          ) : (
+            <AuthPage
+              currentUser={currentUser}
+              onLogout={handleLogout}
+              targetIntent={authIntent}
+              onLoginSuccess={handleLoginSuccess}
+              onNavigate={handleNavigate}
+            />
+          )
+        )}
 
-      {/* 6. Admin Dashboard (Role Guard: ADMIN only) */}
-      {currentPage === 'admin-dashboard' && (
-        currentUser && currentUser.role === 'ADMIN' ? (
-          <AdminDashboard
-            user={currentUser}
-            complaints={complaints}
-            onLogout={handleLogout}
-            onNavigateHome={() => handleNavigate('landing')}
-          />
-        ) : (
-          <AdminLoginPage
-            currentUser={currentUser}
-            onLogout={handleLogout}
-            onLoginSuccess={handleLoginSuccess}
-            onNavigate={handleNavigate}
-          />
-        )
-      )}
+        {/* 5. Officer Dashboard (Role Guard: OFFICER or ADMIN) */}
+        {currentPage === 'officer-dashboard' && (
+          currentUser && (currentUser.role === 'OFFICER' || currentUser.role === 'ADMIN') ? (
+            <OfficerDashboard
+              user={currentUser}
+              complaints={complaints.filter(c =>
+                currentUser.department
+                  ? (c.assigned_department === currentUser.department || c.department === currentUser.department)
+                  : true
+              )}
+              onUpdateStatus={handleUpdateStatus}
+              onLogout={handleLogout}
+              onNavigateHome={() => handleNavigate('landing')}
+            />
+          ) : (
+            <AuthPage
+              currentUser={currentUser}
+              onLogout={handleLogout}
+              targetIntent="officer"
+              onLoginSuccess={handleLoginSuccess}
+              onNavigate={handleNavigate}
+            />
+          )
+        )}
 
-      {/* Live Backend Connection Indicator */}
-      <div className="fixed bottom-4 right-4 z-50 pointer-events-none">
-        <div className={`px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center space-x-2 shadow-md backdrop-blur border ${
-          isBackendConnected
-            ? 'bg-emerald-50/95 text-emerald-800 border-emerald-300'
-            : 'bg-amber-50/95 text-amber-800 border-amber-300'
-        }`}>
-          <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-[#138808] animate-pulse' : 'bg-amber-500'}`}></span>
-          <span>{isBackendConnected ? 'JanSamadhan Live Backend Active' : 'Connecting to Server...'}</span>
+        {/* 6. Admin Dashboard (Role Guard: ADMIN only) */}
+        {currentPage === 'admin-dashboard' && (
+          currentUser && currentUser.role === 'ADMIN' ? (
+            <AdminDashboard
+              user={currentUser}
+              complaints={complaints}
+              onLogout={handleLogout}
+              onNavigateHome={() => handleNavigate('landing')}
+            />
+          ) : (
+            <AdminLoginPage
+              currentUser={currentUser}
+              onLogout={handleLogout}
+              onLoginSuccess={handleLoginSuccess}
+              onNavigate={handleNavigate}
+            />
+          )
+        )}
+
+        {/* Live Backend Connection Indicator */}
+        <div className="fixed bottom-4 right-4 z-50 pointer-events-none">
+          <div className={`px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center space-x-2 shadow-md backdrop-blur border ${
+            isBackendConnected
+              ? 'bg-emerald-50/95 text-emerald-800 border-emerald-300'
+              : 'bg-amber-50/95 text-amber-800 border-amber-300'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-[#138808] animate-pulse' : 'bg-amber-500'}`}></span>
+            <span>{isBackendConnected ? 'JanSamadhan Live Backend Active' : 'Connecting to Server...'}</span>
+          </div>
         </div>
-      </div>
       </div>
     </>
   );

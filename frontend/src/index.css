@@ -1,5 +1,11 @@
+/* ============================================================
+   JanSamadhan — Unified Stylesheet (single source of truth)
+   Merges the base Tailwind theme + premium UI tokens/animations.
+   ============================================================ */
+
 @import "tailwindcss";
 
+/* ---------- Theme tokens (Tailwind v4) ---------- */
 @theme {
   --color-gov-green: #138808;
   --color-gov-green-dark: #006B3C;
@@ -11,11 +17,33 @@
   --color-gov-blue: #1d4ed8;
 }
 
-@layer base {
-  :root {
-    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  }
+/* ---------- Design Tokens (CSS vars for JS helpers) ---------- */
+:root {
+  --js-saffron: #FF9933;
+  --js-saffron-deep: #E68A2E;
+  --js-green: #138808;
+  --js-green-deep: #006B3C;
+  --js-navy: #102A43;
+  --js-navy-soft: #1E3A5F;
+  --js-cream: #F5F9F6;
+  --js-white: #FFFFFF;
 
+  --js-shadow-sm: 0 1px 2px rgba(16, 42, 67, 0.06), 0 1px 3px rgba(16, 42, 67, 0.08);
+  --js-shadow-md: 0 4px 12px rgba(16, 42, 67, 0.08), 0 2px 6px rgba(16, 42, 67, 0.05);
+  --js-shadow-lg: 0 12px 32px rgba(16, 42, 67, 0.12), 0 4px 12px rgba(16, 42, 67, 0.06);
+  --js-shadow-glow-green: 0 8px 28px rgba(19, 136, 8, 0.28);
+  --js-shadow-glow-saffron: 0 8px 28px rgba(255, 153, 51, 0.32);
+  --js-shadow-glow-navy: 0 8px 28px rgba(16, 42, 67, 0.22);
+
+  --js-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --js-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --js-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* ---------- Base layer ---------- */
+@layer base {
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
@@ -50,144 +78,7 @@
   }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* Subtle Tricolor Gradient Utilities */
-.tricolor-stripe {
-  background: linear-gradient(90deg, #FF9933 0%, #FFFFFF 50%, #138808 100%);
-}
-
-.tricolor-stripe-vertical {
-  background: linear-gradient(180deg, #FF9933 0%, #FFFFFF 50%, #138808 100%);
-}
-
-.tricolor-border {
-  border-image: linear-gradient(to right, #FF9933, #ffffff, #138808) 1;
-}
-
-.tricolor-badge {
-  background: linear-gradient(135deg, rgba(255, 153, 51, 0.15) 0%, rgba(255, 255, 255, 0.9) 50%, rgba(19, 136, 8, 0.15) 100%);
-}
-
-/* Glassmorphic utilities */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.glass-panel-dark {
-  background: rgba(16, 42, 67, 0.92);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-/* Animations */
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.03); }
-}
-
-.pulse-glow {
-  animation: pulseGlow 2.5s infinite ease-in-out;
-}
-
-/* Touch-friendly min target on mobile */
-@media (max-width: 640px) {
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-
-/* Shared JanSamadhan Responsive Unified Container System */
-.gov-container {
-  width: 100%;
-  max-width: 1720px;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 1rem; /* 16px default mobile */
-  padding-right: 1rem;
-}
-
-@media (min-width: 640px) {
-  .gov-container {
-    padding-left: 1.25rem; /* 20px */
-    padding-right: 1.25rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .gov-container {
-    padding-left: 2rem; /* 32px */
-    padding-right: 2rem;
-  }
-}
-
-@media (min-width: 1280px) {
-  .gov-container {
-    padding-left: 2.5rem; /* 40px */
-    padding-right: 2.5rem;
-  }
-}
-
-@media (min-width: 1440px) {
-  .gov-container {
-    padding-left: 3.75rem; /* 60px */
-    padding-right: 3.75rem;
-  }
-}
-
-@media (min-width: 1920px) {
-  .gov-container {
-    padding-left: 2.5rem; /* 40px inner padding; (1920 - 1720) / 2 = 100px outer margins */
-    padding-right: 2.5rem;
-  }
-}
-/* ============================================================
-   JanSamadhan — Premium UI Tokens & Animations
-   Drop these snippets into your existing src/index.css
-   (merge with what's already there; nothing is removed).
-   ============================================================ */
-
-/* ---------- Design Tokens ---------- */
-:root {
-  --js-saffron: #FF9933;
-  --js-saffron-deep: #E68A2E;
-  --js-green: #138808;
-  --js-green-deep: #006B3C;
-  --js-navy: #102A43;
-  --js-navy-soft: #1E3A5F;
-  --js-cream: #F5F9F6;
-  --js-white: #FFFFFF;
-
-  --js-shadow-sm: 0 1px 2px rgba(16, 42, 67, 0.06), 0 1px 3px rgba(16, 42, 67, 0.08);
-  --js-shadow-md: 0 4px 12px rgba(16, 42, 67, 0.08), 0 2px 6px rgba(16, 42, 67, 0.05);
-  --js-shadow-lg: 0 12px 32px rgba(16, 42, 67, 0.12), 0 4px 12px rgba(16, 42, 67, 0.06);
-  --js-shadow-glow-green: 0 8px 28px rgba(19, 136, 8, 0.28);
-  --js-shadow-glow-saffron: 0 8px 28px rgba(255, 153, 51, 0.32);
-  --js-shadow-glow-navy: 0 8px 28px rgba(16, 42, 67, 0.22);
-
-  --js-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --js-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --js-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* ---------- Tricolor Stripe (top + bottom) ---------- */
+/* ---------- Tricolor Stripe (with shimmer) ---------- */
 .tricolor-stripe {
   background: linear-gradient(
     90deg,
@@ -220,17 +111,49 @@
   100% { transform: translateX(100%); }
 }
 
-/* ---------- Container ---------- */
+/* Tricolor variants */
+.tricolor-stripe-vertical {
+  background: linear-gradient(180deg, #FF9933 0%, #FFFFFF 50%, #138808 100%);
+}
+.tricolor-border {
+  border-image: linear-gradient(to right, #FF9933, #ffffff, #138808) 1;
+}
+.tricolor-badge {
+  background: linear-gradient(135deg, rgba(255, 153, 51, 0.15) 0%, rgba(255, 255, 255, 0.9) 50%, rgba(19, 136, 8, 0.15) 100%);
+}
+
+/* ---------- Govt container (wide portal feel) ---------- */
 .gov-container {
   width: 100%;
-  max-width: 80rem;
+  max-width: 1720px;
   margin-left: auto;
   margin-right: auto;
-  padding-left: 1rem;
+  padding-left: 1rem; /* 16px default mobile */
   padding-right: 1rem;
 }
-@media (min-width: 640px)  { .gov-container { padding-left: 1.5rem; padding-right: 1.5rem; } }
-@media (min-width: 1024px) { .gov-container { padding-left: 2.5rem; padding-right: 2.5rem; } }
+@media (min-width: 640px)  { .gov-container { padding-left: 1.25rem;  padding-right: 1.25rem;  } }
+@media (min-width: 1024px) { .gov-container { padding-left: 2rem;     padding-right: 2rem;     } }
+@media (min-width: 1280px) { .gov-container { padding-left: 2.5rem;   padding-right: 2.5rem;   } }
+@media (min-width: 1440px) { .gov-container { padding-left: 3.75rem;  padding-right: 3.75rem;  } }
+@media (min-width: 1920px) { .gov-container { padding-left: 2.5rem;   padding-right: 2.5rem;   } }
+
+/* ---------- Glass panels ---------- */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.glass-panel-dark {
+  background: rgba(16, 42, 67, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.js-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
 
 /* ---------- Premium scrollbar ---------- */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -251,7 +174,13 @@
   color: var(--js-green-deep);
 }
 
-/* ---------- Keyframes ---------- */
+/* ---------- Animations ---------- */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.03); }
+}
+.pulse-glow { animation: pulseGlow 2.5s infinite ease-in-out; }
+
 @keyframes js-float {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-8px); }
@@ -324,14 +253,6 @@
   z-index: 0;
 }
 
-/* ---------- Glass card ---------- */
-.js-glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-}
-
 /* ---------- Magnetic / glow on hover for primary buttons ---------- */
 .js-btn-primary {
   position: relative;
@@ -370,6 +291,14 @@
 }
 .js-lift:hover {
   transform: translateY(-6px);
+}
+
+/* ---------- Touch-friendly min target on mobile ---------- */
+@media (max-width: 640px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 /* ---------- Reduced motion ---------- */

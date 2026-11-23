@@ -12,8 +12,7 @@ import {
   Users,
   Compass,
   ChevronRight,
-  CheckCircle,
-  PhoneCall
+  CheckCircle
 } from 'lucide-react';
 import JanSamadhanLogo from '../components/JanSamadhanLogo';
 import Navbar from '../components/Navbar';
@@ -136,45 +135,8 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
   return (
     <div className="min-h-screen flex flex-col bg-[#F5F9F6] text-[#102A43] font-sans antialiased selection:bg-[#138808]/20 selection:text-[#006B3C] overflow-x-hidden">
 
-      {/* Top National Tricolor Stripe & Initiative Bar */}
-      <div className="h-1.5 w-full tricolor-stripe"></div>
-
-      <div className="bg-[#102A43] text-slate-300 text-xs py-2 border-b border-slate-800">
-        <div className="gov-container flex flex-wrap justify-between items-center gap-2">
-          {/* Left: Initiative Titles */}
-          <div className="flex items-center space-x-2 text-[11px] sm:text-xs">
-            <span className="relative w-2 h-2 rounded-full bg-[#FF9933] flex-shrink-0">
-              <span className="absolute inset-0 rounded-full bg-[#FF9933] animate-ping opacity-75"></span>
-            </span>
-            <span className="font-semibold text-slate-100 whitespace-nowrap">
-              Digital India Civic Redressal Initiative
-            </span>
-            <span className="text-slate-400 hidden sm:inline">•</span>
-            <span className="text-slate-300 hidden sm:inline whitespace-nowrap">Clean India • Prosperous India</span>
-          </div>
-
-          {/* Right: Citizen Helpline & Admin Login */}
-          <div className="flex items-center space-x-2 sm:space-x-3 text-[11px] sm:text-xs text-slate-300">
-            <span className="inline-flex items-center space-x-1.5 text-slate-300">
-              <PhoneCall className="w-3.5 h-3.5 text-[#FF9933] flex-shrink-0" />
-              <span className="whitespace-nowrap"><span className="hidden sm:inline">Citizen </span>Helpline: <strong className="text-white font-bold tracking-wide">1800-JAN-SAMADHAN</strong></span>
-            </span>
-            <span className="text-slate-600 hidden sm:inline">|</span>
-            <motion.button
-              onClick={withHaptic('light', () => onNavigate('admin-login', { path: '/admin/login' }))}
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.96 }}
-              transition={{ duration: 0.2, ease: EASE }}
-              className="bg-[#FF9933] hover:bg-[#e68a2e] text-slate-950 px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-extrabold cursor-pointer transition-colors shadow-sm whitespace-nowrap inline-flex items-center space-x-1"
-            >
-              <ShieldCheck className="w-3 h-3 text-slate-950" />
-              <span>Admin Login ↗</span>
-            </motion.button>
-          </div>
-        </div>
-      </div>
-
-      {/* Shared government-style navigation (replaces the inline navbar). */}
+      {/* Shared government-style navigation (includes tricolor stripe,
+          initiative topbar with helpline, and main nav). */}
       <Navbar
         currentPage="landing"
         currentUser={currentUser}
