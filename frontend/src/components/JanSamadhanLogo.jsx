@@ -1,6 +1,57 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import { softHaptic } from '../utils/haptics';
 
-export default function JanSamadhanLogo({ size = 'md', variant = 'light', showTagline = true, onClick }) {
+/**
+ * Module-level tap counter — shared across ALL JanSamadhanLogo instances
+ * (navbar logo + landing action-section logo) so the hidden easter-egg
+ * threshold is reached no matter which logo the owner taps.
+ *
+ * The counter is intentionally invisible: no on-screen cue while tapping,
+ * only a single confirmation haptic + the parent's chooser modal on success.
+ */
+const SECRET_TAPS = 5;        // number of taps required
+const SECRET_WINDOW = 1800;   // ms window in which all taps must occur
+const _secretTapTimes = [];
+
+export default function JanSamadhanLogo({
+  size = 'md',
+  variant = 'light',
+  showTagline = true,
+  onClick,
+  onSecretTrigger
+}) {
+  const lastTrigger = useRef(0);
+
+  const handleClick = (e) => {
+    // ---- Hidden staff-access easter-egg (5 quick taps) ----
+    if (onSecretTrigger) {
+      const now = Date.now();
+      // prune taps older than the window
+      while (_secretTapTimes.length && now - _secretTapTimes[0] > SECRET_WINDOW) {
+        _secretTapTimes.shift();
+      }
+      _secretTapTimes.push(now);
+      const count = _secretTapTimes.length;
+
+      if (count >= SECRET_TAPS) {
+        // throttle: don't re-trigger more than once per second
+        if (now - lastTrigger.current > 1000) {
+          lastTrigger.current = now;
+          _secretTapTimes.length = 0;
+          softHaptic('medium');
+          onSecretTrigger();
+        } else {
+          _secretTapTimes.length = 0;
+        }
+        return; // do NOT also fire normal navigation on the trigger tap
+      }
+      // subtle tactile escalation from the 3rd tap onward (mobile only)
+      if (count >= 3) softHaptic('soft');
+    }
+
+    // ---- Normal single-click behaviour (navigate home, etc.) ----
+    if (onClick) onClick(e);
+  };
   // Sizes: sm, md, lg
   const isSm = size === 'sm';
   const isLg = size === 'lg';
@@ -13,8 +64,8 @@ export default function JanSamadhanLogo({ size = 'md', variant = 'light', showTa
 
   return (
     <div
-      onClick={onClick}
-      className={`inline-flex items-center space-x-2.5 sm:space-x-3 select-none flex-shrink-0 ${onClick ? 'cursor-pointer' : ''}`}
+      onClick={handleClick}
+      className={`inline-flex items-center space-x-2.5 sm:space-x-3 select-none flex-shrink-0 ${(onClick || onSecretTrigger) ? 'cursor-pointer' : ''}`}
     >
       {/* Emblem / Shield with Tricolor & Resolution Checkmark */}
       <div className={`relative ${iconDim} rounded-xl bg-gradient-to-br from-[#102A43] to-[#0b1c2d] flex items-center justify-center p-0.5 shadow-md border border-white/20 overflow-hidden flex-shrink-0`}>

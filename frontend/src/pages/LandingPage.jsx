@@ -102,7 +102,7 @@ function CountUp({ end, duration = 2, suffix = '' }) {
   return <span ref={ref}>{val.toLocaleString('en-IN')}{suffix}</span>;
 }
 
-export default function LandingPage({ currentUser, onLogout, onNavigate }) {
+export default function LandingPage({ currentUser, onLogout, onNavigate, onSecretTrigger }) {
   // parallax for hero
   const { scrollY } = useScroll();
   const heroBgY = useTransform(scrollY, [0, 500], [0, 80]);
@@ -142,6 +142,7 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
         currentUser={currentUser}
         onNavigate={onNavigate}
         onLogout={onLogout}
+        onSecretTrigger={onSecretTrigger}
       />
 
       {/* ========================================================
@@ -532,7 +533,7 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
           {/* Centered Logo & Heading */}
           <Reveal className="text-center max-w-2xl mx-auto mb-12 space-y-3">
             <motion.div variants={scaleIn} className="flex justify-center mb-1">
-              <JanSamadhanLogo size="lg" variant="light" />
+              <JanSamadhanLogo size="lg" variant="light" onSecretTrigger={onSecretTrigger} />
             </motion.div>
             <motion.h2 variants={fadeUp} className="text-2xl sm:text-4xl font-black text-[#102A43] tracking-tight">
               Your Problem Deserves Attention.
@@ -690,7 +691,7 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
         <div className="gov-container py-12 relative">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
             <div className="space-y-3">
-              <JanSamadhanLogo size="md" variant="dark" />
+              <JanSamadhanLogo size="md" variant="dark" onSecretTrigger={onSecretTrigger} />
               <p className="text-slate-400 text-xs leading-relaxed">
                 JanSamadhan is an AI-powered grievance redressal portal bringing transparent, multilingual civic problem resolution to every citizen.
               </p>
@@ -714,8 +715,6 @@ export default function LandingPage({ currentUser, onLogout, onNavigate }) {
                 <li><a href="#how-it-works" className="hover:text-white">How It Works</a></li>
                 <li><button onClick={() => handleAction('register')} className="hover:text-white cursor-pointer">Register Complaint</button></li>
                 <li><button onClick={() => handleAction('track')} className="hover:text-white cursor-pointer">Track Complaint</button></li>
-                <li><button onClick={() => onNavigate('auth', { targetIntent: 'officer', path: '/login?intent=officer' })} className="hover:text-white cursor-pointer">Department Officer Portal</button></li>
-                <li><button onClick={() => onNavigate('admin-login', { path: '/admin/login' })} className="text-[#FF9933] hover:underline font-bold cursor-pointer">Central Admin Portal (/admin/login)</button></li>
               </ul>
             </div>
 

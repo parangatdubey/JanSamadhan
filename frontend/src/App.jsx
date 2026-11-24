@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShieldCheck, UserCog, X, ArrowRight } from 'lucide-react';
 import LandingPage from './pages/LandingPage';
 import AboutPage from './pages/AboutPage';
 import WhyTrustPage from './pages/WhyTrustPage';
@@ -18,6 +20,7 @@ import {
   fetchCurrentUser,
   logoutUser
 } from './services/api';
+import { softHaptic } from './utils/haptics';
 
 /**
  * Synchronously retrieve the active user from localStorage
@@ -36,7 +39,18 @@ function getInitialUser() {
 }
 
 /**
- * Maps browser pathname on first load to the corresponding internal page and intent
+ * Initial-route resolver.
+ *
+ * IMPORTANT — public URL surface deliberately shrunk:
+ *   The officer/admin portals are NO LONGER reachable by typing a URL.
+ *   Anyone who hits `/admin/*`, `/officer/*`, or `/login?intent=officer`
+ *   is silently redirected to the public landing page. The only way to
+ *   reach the staff login chooser is the hidden easter-egg (5 quick taps
+ *   on any JanSamadhan logo), which is wired up inside LandingPage +
+ *   Navbar and never advertised in the public UI.
+ *
+ * Recognised public paths: /, /about, /why-trust, /how-it-works,
+ * /services, /contact, /login, /register, /citizen/dashboard.
  */
 function getInitialRoute(user) {
   if (typeof window === 'undefined') {
@@ -44,24 +58,27 @@ function getInitialRoute(user) {
   }
   const path = window.location.pathname.toLowerCase();
 
-  if (path === '/admin/login') {
-    return { page: 'admin-login', intent: 'admin', path: '/admin/login' };
+  // ===== PUBLIC INFO PAGES =====
+  if (path === '/about')           return { page: 'about',         intent: 'register', path: '/about' };
+  if (path === '/why-trust')       return { page: 'why-trust',     intent: 'register', path: '/why-trust' };
+  if (path === '/how-it-works')    return { page: 'how-it-works',  intent: 'register', path: '/how-it-works' };
+  if (path === '/services')        return { page: 'services',      intent: 'register', path: '/services' };
+  if (path === '/contact')         return { page: 'contact',       intent: 'register', path: '/contact' };
+
+  // ===== CITIZEN AUTH (public) =====
+  if (path === '/login') {
+    // NOTE: ?intent=officer is intentionally ignored here — staff access
+    // is gated behind the hidden easter-egg, never the URL.
+    return { page: 'auth', intent: 'login', path: '/login' };
+  }
+  if (path === '/register') {
+    return { page: 'auth', intent: 'register', path: '/register' };
+  }
+  if (path === '/auth') {
+    return { page: 'auth', intent: 'login', path: '/login' };
   }
 
-  if (path === '/admin/dashboard' || path === '/admin') {
-    if (user && user.role === 'ADMIN') {
-      return { page: 'admin-dashboard', intent: 'admin', path: '/admin/dashboard' };
-    }
-    return { page: 'admin-login', intent: 'admin', path: '/admin/login' };
-  }
-
-  if (path === '/officer/dashboard' || path === '/officer') {
-    if (user && (user.role === 'OFFICER' || user.role === 'ADMIN')) {
-      return { page: 'officer-dashboard', intent: 'officer', path: '/officer/dashboard' };
-    }
-    return { page: 'auth', intent: 'officer', path: '/login?intent=officer' };
-  }
-
+  // ===== CITIZEN DASHBOARD (requires login — handled by role guard) =====
   if (path === '/citizen/dashboard' || path === '/citizen') {
     if (user) {
       return { page: 'citizen-dashboard', intent: 'track', path: '/citizen/dashboard' };
@@ -69,47 +86,24 @@ function getInitialRoute(user) {
     return { page: 'auth', intent: 'login', path: '/login' };
   }
 
-  if (path === '/login') {
-    const searchParams = new URLSearchParams(window.location.search);
-    const intent = searchParams.get('intent') === 'officer' ? 'officer' : 'login';
-    return { page: 'auth', intent, path: window.location.pathname + window.location.search };
-  }
-
-  if (path === '/register') {
-    return { page: 'auth', intent: 'register', path: '/register' };
-  }
-
-  if (path === '/auth') {
-    return { page: 'auth', intent: 'login', path: '/login' };
-  }
-
-  // ===== Public info pages =====
-  if (path === '/about')           return { page: 'about',         intent: 'register', path: '/about' };
-  if (path === '/why-trust')       return { page: 'why-trust',     intent: 'register', path: '/why-trust' };
-  if (path === '/how-it-works')    return { page: 'how-it-works',  intent: 'register', path: '/how-it-works' };
-  if (path === '/services')        return { page: 'services',      intent: 'register', path: '/services' };
-  if (path === '/contact')         return { page: 'contact',       intent: 'register', path: '/contact' };
-
+  // ===== EVERYTHING ELSE (incl. /admin/*, /officer/*, unknown paths) =====
+  // Silently fall back to the public landing page. Staff portals are only
+  // reachable through the hidden logo-tap easter-egg + chooser.
   return { page: 'landing', intent: 'register', path: '/' };
 }
 
 /**
- * Computes canonical URL for a given page name and options
+ * Computes canonical URL for a given page name and options.
+ * Only public pages get a real URL; staff pages resolve to '/' so they
+ * never leak into the browser address bar.
  */
 function pageToPath(page, options = {}) {
   if (options.path) return options.path;
   switch (page) {
-    case 'admin-login':
-      return '/admin/login';
-    case 'admin-dashboard':
-      return '/admin/dashboard';
-    case 'officer-dashboard':
-      return '/officer/dashboard';
     case 'citizen-dashboard':
       return '/citizen/dashboard';
     case 'auth':
       if (options.targetIntent === 'register') return '/register';
-      if (options.targetIntent === 'officer') return '/login?intent=officer';
       return '/login';
     case 'about':
       return '/about';
@@ -146,6 +140,10 @@ export default function App() {
   const [citizenInitialTab, setCitizenInitialTab] = useState('new-complaint');
   const [complaints, setComplaints] = useState([]);
   const [isBackendConnected, setIsBackendConnected] = useState(false);
+
+  // Hidden staff-access chooser modal — opened only by the 5-tap logo
+  // easter-egg. Never advertised anywhere in the public UI.
+  const [secretChooserOpen, setSecretChooserOpen] = useState(false);
 
   // Synchronize initial URL if needed
   useEffect(() => {
@@ -191,11 +189,12 @@ export default function App() {
           if (cachedUser) {
             logoutUser();
             setCurrentUser(null);
-            if (currentPage === 'admin-dashboard') {
+            if (currentPage === 'admin-dashboard' || currentPage === 'admin-login') {
               setCurrentPage('admin-login');
-              syncUrl('/admin/login');
+              // no URL sync — staff route stays in-app only
             } else if (currentPage === 'officer-dashboard' || currentPage === 'citizen-dashboard') {
               setCurrentPage('auth');
+              setAuthIntent('login');
               syncUrl('/login');
             }
           }
@@ -209,7 +208,11 @@ export default function App() {
   }, [currentPage]);
 
   /**
-   * Central navigation handler with role-based route protection
+   * Central navigation handler with role-based route protection.
+   *
+   * Staff portals (admin-login / admin-dashboard / officer-dashboard) are
+   * navigated to IN-APP ONLY — their target pages never get a real URL in
+   * the browser address bar, so they cannot be reached by typing a path.
    */
   const handleNavigate = useCallback((page, options = {}) => {
     let targetPage = page;
@@ -217,30 +220,40 @@ export default function App() {
     let targetPath = options.path;
 
     if (page === 'admin-login') {
+      // In-app only — no URL sync
       targetPage = 'admin-login';
       targetIntent = 'admin';
-      targetPath = targetPath || '/admin/login';
-    } else if (page === 'admin-dashboard') {
+      setAuthIntent(targetIntent);
+      setCurrentPage(targetPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (page === 'admin-dashboard') {
       // Role protection: Only authenticated ADMIN can enter
       if (!currentUser || currentUser.role !== 'ADMIN') {
-        targetPage = 'admin-login';
-        targetIntent = 'admin';
-        targetPath = '/admin/login';
+        setAuthIntent('admin');
+        setCurrentPage('admin-login');
       } else {
-        targetPage = 'admin-dashboard';
-        targetPath = targetPath || '/admin/dashboard';
+        setCurrentPage('admin-dashboard');
       }
-    } else if (page === 'officer-dashboard') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (page === 'officer-dashboard') {
       // Role protection: Only OFFICER or ADMIN can enter
       if (!currentUser || (currentUser.role !== 'OFFICER' && currentUser.role !== 'ADMIN')) {
-        targetPage = 'auth';
-        targetIntent = 'officer';
-        targetPath = '/login?intent=officer';
+        setAuthIntent('officer');
+        setCurrentPage('auth');
       } else {
-        targetPage = 'officer-dashboard';
-        targetPath = targetPath || '/officer/dashboard';
+        setCurrentPage('officer-dashboard');
       }
-    } else if (page === 'citizen-dashboard') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (page === 'citizen-dashboard') {
       if (!currentUser) {
         targetPage = 'auth';
         targetIntent = options.targetIntent || (options.initialTab === 'my-complaints' ? 'track' : 'register');
@@ -255,7 +268,7 @@ export default function App() {
     } else if (page === 'auth') {
       targetPage = 'auth';
       targetIntent = options.targetIntent || 'login';
-      targetPath = targetPath || (targetIntent === 'register' ? '/register' : (targetIntent === 'officer' ? '/login?intent=officer' : '/login'));
+      targetPath = targetPath || (targetIntent === 'register' ? '/register' : '/login');
     } else if (page === 'about' || page === 'why-trust' || page === 'how-it-works' || page === 'services' || page === 'contact') {
       // Public info pages — no auth required
       targetPage = page;
@@ -270,6 +283,36 @@ export default function App() {
     syncUrl(targetPath || pageToPath(targetPage, { targetIntent }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentUser, authIntent]);
+
+  /**
+   * Hidden staff-access trigger — fired when the owner taps any
+   * JanSamadhan logo 5 times quickly. Opens a chooser modal offering
+   * Officer Login and Admin Login. Public users can never discover this
+   * (no menu item, no link, no URL).
+   */
+  const handleSecretTrigger = useCallback(() => {
+    softHaptic('medium');
+    setSecretChooserOpen(true);
+  }, []);
+
+  const chooseOfficer = useCallback(() => {
+    setSecretChooserOpen(false);
+    // If already an authenticated officer/admin, jump straight to dashboard
+    if (currentUser && (currentUser.role === 'OFFICER' || currentUser.role === 'ADMIN')) {
+      handleNavigate('officer-dashboard');
+    } else {
+      handleNavigate('auth', { targetIntent: 'officer' });
+    }
+  }, [currentUser, handleNavigate]);
+
+  const chooseAdmin = useCallback(() => {
+    setSecretChooserOpen(false);
+    if (currentUser && currentUser.role === 'ADMIN') {
+      handleNavigate('admin-dashboard');
+    } else {
+      handleNavigate('admin-login');
+    }
+  }, [currentUser, handleNavigate]);
 
   /**
    * Post-authentication routing based on authenticated user's role
@@ -290,10 +333,10 @@ export default function App() {
 
     if (userData.role === 'ADMIN') {
       setCurrentPage('admin-dashboard');
-      syncUrl('/admin/dashboard');
+      // staff dashboard — no URL sync (in-app only)
     } else if (userData.role === 'OFFICER') {
       setCurrentPage('officer-dashboard');
-      syncUrl('/officer/dashboard');
+      // staff dashboard — no URL sync (in-app only)
     } else {
       if (resolvedIntent === 'track') {
         setCitizenInitialTab('my-complaints');
@@ -339,10 +382,10 @@ export default function App() {
     await logoutUser();
     setCurrentUser(null);
 
-    // If logging out from admin console, return to admin-login
+    // If logging out from admin console, stay on the in-app admin-login
+    // screen (no URL sync — staff route must never appear in address bar).
     if (currentPage === 'admin-dashboard' || currentPage === 'admin-login') {
       setCurrentPage('admin-login');
-      syncUrl('/admin/login');
     } else {
       setCurrentPage('auth');
       setAuthIntent('login');
@@ -368,6 +411,7 @@ export default function App() {
             currentUser={currentUser}
             onLogout={handleLogout}
             onNavigate={handleNavigate}
+            onSecretTrigger={handleSecretTrigger}
           />
         )}
 
@@ -408,7 +452,9 @@ export default function App() {
           />
         )}
 
-        {/* 2. Dedicated Admin Login Page (Route: /admin/login) */}
+        {/* 2. Dedicated Admin Login Page — in-app only (no public URL).
+            Reachable exclusively via the hidden 5-tap logo easter-egg →
+            staff chooser modal → "Admin Login". */}
         {currentPage === 'admin-login' && (
           <AdminLoginPage
             currentUser={currentUser}
@@ -506,6 +552,109 @@ export default function App() {
             <span>{isBackendConnected ? 'JanSamadhan Live Backend Active' : 'Connecting to Server...'}</span>
           </div>
         </div>
+
+        {/* ===== Hidden Staff-Access Chooser Modal =====
+            Opened ONLY by the 5-tap logo easter-egg (handleSecretTrigger).
+            Never advertised anywhere in the public UI. Lets the project
+            owner pick Officer Login or Admin Login. */}
+        <AnimatePresence>
+          {secretChooserOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0b1c2d]/80 backdrop-blur-sm"
+              onClick={() => setSecretChooserOpen(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: 20 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden"
+              >
+                {/* Tricolor strip header */}
+                <div className="h-1.5 w-full tricolor-stripe" />
+
+                {/* Close button */}
+                <button
+                  onClick={() => setSecretChooserOpen(false)}
+                  className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-colors z-10"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="p-7 sm:p-9 text-center">
+                  {/* Emblem */}
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.4 }}
+                    className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#102A43] to-[#0b1c2d] flex items-center justify-center shadow-lg border border-white/20"
+                  >
+                    <ShieldCheck className="w-8 h-8 text-[#FF9933]" />
+                  </motion.div>
+
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FF9933]/15 border border-[#FF9933]/30 text-[#E68A2E] text-[10px] font-black uppercase tracking-[0.15em] mb-3">
+                    <ShieldCheck className="w-3 h-3" />
+                    Staff Access
+                  </div>
+
+                  <h3 className="text-xl sm:text-2xl font-black text-[#102A43] tracking-tight mb-2">
+                    Restricted Portal
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-7">
+                    Authorized personnel only. Choose the console you wish to sign in to.
+                  </p>
+
+                  {/* Choice buttons */}
+                  <div className="grid grid-cols-1 gap-3">
+                    <motion.button
+                      onClick={chooseOfficer}
+                      whileHover={{ y: -2, boxShadow: '0 10px 28px rgba(16,42,67,0.18)' }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ duration: 0.2 }}
+                      className="group w-full flex items-center gap-3 p-4 rounded-2xl bg-[#102A43] hover:bg-slate-800 text-white text-left transition-colors"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                        <UserCog className="w-6 h-6 text-[#FF9933]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-extrabold text-sm sm:text-base">Officer Login</div>
+                        <div className="text-[11px] text-slate-300">Nodal officer grievance console</div>
+                      </div>
+                      <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                    </motion.button>
+
+                    <motion.button
+                      onClick={chooseAdmin}
+                      whileHover={{ y: -2, boxShadow: '0 10px 28px rgba(255,153,51,0.30)' }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ duration: 0.2 }}
+                      className="group w-full flex items-center gap-3 p-4 rounded-2xl bg-[#FF9933] hover:bg-[#E68A2E] text-[#102A43] text-left transition-colors"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-[#102A43]/15 flex items-center justify-center flex-shrink-0">
+                        <ShieldCheck className="w-6 h-6 text-[#102A43]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-extrabold text-sm sm:text-base">Admin Login</div>
+                        <div className="text-[11px] text-[#102A43]/70">Central administration console</div>
+                      </div>
+                      <ArrowRight className="w-5 h-5 text-[#102A43]/60 group-hover:text-[#102A43] group-hover:translate-x-1 transition-all" />
+                    </motion.button>
+                  </div>
+
+                  <p className="mt-6 text-[10px] text-slate-400 leading-relaxed">
+                    Unauthorised access is logged and may attract penal action under applicable IT Act provisions.
+                  </p>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   );

@@ -310,3 +310,130 @@
     scroll-behavior: auto !important;
   }
 }
+
+
+
+/* ============ PREMIUM UPGRADE ADDITIONS ============ */
+
+/* Big section spacing */
+.section-xl { padding-top: 5rem; padding-bottom: 5rem; }
+@media (min-width: 1024px) { .section-xl { padding-top: 7rem; padding-bottom: 7rem; } }
+
+/* Premium heading scale */
+.display-1 {
+  font-size: clamp(2.5rem, 5vw + 1rem, 4.5rem);
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--js-navy);
+}
+.display-2 {
+  font-size: clamp(2rem, 3.5vw + 1rem, 3.25rem);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--js-navy);
+}
+.lead-text {
+  font-size: clamp(1rem, 0.6vw + 0.85rem, 1.2rem);
+  line-height: 1.7;
+  color: #475569;
+}
+
+/* Gradient heading accent */
+.heading-gradient {
+  background: linear-gradient(120deg, #102A43 0%, #006B3C 55%, #138808 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Premium card */
+.premium-card {
+  position: relative;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  box-shadow: var(--js-shadow-sm);
+  transition: transform 0.45s var(--js-ease), box-shadow 0.45s var(--js-ease), border-color 0.45s var(--js-ease);
+  overflow: hidden;
+}
+.premium-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,153,51,0.06) 0%, transparent 40%, rgba(19,136,8,0.06) 100%);
+  opacity: 0;
+  transition: opacity 0.45s var(--js-ease);
+  pointer-events: none;
+}
+.premium-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--js-shadow-lg);
+  border-color: rgba(19,136,8,0.35);
+}
+.premium-card:hover::before { opacity: 1; }
+
+/* Icon medallion */
+.icon-medallion {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255,153,51,0.15), rgba(19,136,8,0.15));
+  color: var(--js-green-deep);
+  border: 1px solid rgba(19,136,8,0.2);
+  transition: all 0.45s var(--js-ease);
+}
+.premium-card:hover .icon-medallion {
+  background: linear-gradient(135deg, var(--js-saffron), var(--js-green));
+  color: #fff;
+  transform: rotate(-6deg) scale(1.08);
+  box-shadow: var(--js-shadow-glow-green);
+}
+
+/* Big gradient band section */
+.band-navy {
+  background: radial-gradient(circle at 20% 20%, #1E3A5F 0%, #102A43 55%, #0A1B2E 100%);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Chip / badge */
+.chip-gov {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, rgba(255,153,51,0.14), rgba(19,136,8,0.14));
+  color: var(--js-green-deep);
+  border: 1px solid rgba(19,136,8,0.25);
+  backdrop-filter: blur(6px);
+}
+
+/* Decorative grid pattern for backgrounds */
+.bg-grid-pattern {
+  background-image:
+    linear-gradient(rgba(16,42,67,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16,42,67,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Divider accent */
+.divider-gov {
+  height: 4px;
+  width: 4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--js-saffron), var(--js-green));
+  margin: 1.25rem auto 0;
+}
+

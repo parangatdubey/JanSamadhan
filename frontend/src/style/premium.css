@@ -1,0 +1,647 @@
+/* ============================================================
+   JanSamadhan — Unified Stylesheet (single source of truth)
+   Merges the base Tailwind theme + premium UI tokens/animations.
+   ============================================================ */
+
+@import "tailwindcss";
+
+/* ---------- Theme tokens (Tailwind v4) ---------- */
+@theme {
+  --color-gov-green: #138808;
+  --color-gov-green-dark: #006B3C;
+  --color-gov-saffron: #FF9933;
+  --color-gov-saffron-deep: #E68A2E;
+  --color-gov-navy: #102A43;
+  --color-gov-ashoka: #000080;
+  --color-gov-light: #F5F9F6;
+  --color-gov-cream: #FFF8EC;
+  --color-gov-teal: #0d9488;
+  --color-gov-blue: #1d4ed8;
+  --color-gov-gold: #C99700;
+  --color-gov-gold-light: #D4AF37;
+}
+
+/* ---------- Design Tokens (CSS vars for JS helpers) ---------- */
+:root {
+  /* Tricolor palette */
+  --js-saffron: #FF9933;
+  --js-saffron-deep: #E68A2E;
+  --js-saffron-soft: #FFB366;
+  --js-green: #138808;
+  --js-green-deep: #006B3C;
+  --js-green-soft: #4ADE80;
+  --js-navy: #102A43;
+  --js-navy-soft: #1E3A5F;
+  --js-navy-deep: #0b1c2d;
+  --js-cream: #F5F9F6;
+  --js-warm: #FFF8EC;
+  --js-white: #FFFFFF;
+  --js-ashoka: #000080;
+  --js-gold: #C99700;
+  --js-gold-light: #D4AF37;
+
+  /* Premium shadows */
+  --js-shadow-sm: 0 1px 2px rgba(16, 42, 67, 0.06), 0 1px 3px rgba(16, 42, 67, 0.08);
+  --js-shadow-md: 0 4px 12px rgba(16, 42, 67, 0.08), 0 2px 6px rgba(16, 42, 67, 0.05);
+  --js-shadow-lg: 0 12px 32px rgba(16, 42, 67, 0.12), 0 4px 12px rgba(16, 42, 67, 0.06);
+  --js-shadow-xl: 0 24px 60px rgba(16, 42, 67, 0.16), 0 8px 24px rgba(16, 42, 67, 0.08);
+  --js-shadow-glow-green: 0 8px 28px rgba(19, 136, 8, 0.28);
+  --js-shadow-glow-saffron: 0 8px 28px rgba(255, 153, 51, 0.32);
+  --js-shadow-glow-navy: 0 8px 28px rgba(16, 42, 67, 0.22);
+  --js-shadow-glow-gold: 0 8px 28px rgba(212, 175, 55, 0.35);
+
+  /* Motion easings */
+  --js-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --js-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --js-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --js-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* ---------- Base layer ---------- */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    color: #102A43;
+    background-color: #F5F9F6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  input, textarea, select {
+    color: #102A43 !important;
+    background-color: #ffffff;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1;
+  }
+
+  /* Accessibility focus ring */
+  *:focus-visible {
+    outline: 2px solid #006B3C;
+    outline-offset: 2px;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.01em;
+  }
+}
+
+/* ============================================================
+   TRICOLOR PRIMITIVES — the heart of the government identity
+   ============================================================ */
+
+/* ---------- Tricolor Stripe (with shimmer) ---------- */
+.tricolor-stripe {
+  background: linear-gradient(
+    90deg,
+    var(--js-saffron) 0%,
+    var(--js-saffron) 33%,
+    var(--js-white) 33%,
+    var(--js-white) 66%,
+    var(--js-green) 66%,
+    var(--js-green) 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+.tricolor-stripe::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: tricolor-shimmer 6s var(--js-ease) infinite;
+}
+@keyframes tricolor-shimmer {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Tricolor variants */
+.tricolor-stripe-vertical {
+  background: linear-gradient(180deg, #FF9933 0%, #FFFFFF 50%, #138808 100%);
+}
+.tricolor-border {
+  border-image: linear-gradient(to right, #FF9933, #ffffff, #138808) 1;
+}
+.tricolor-badge {
+  background: linear-gradient(135deg, rgba(255, 153, 51, 0.15) 0%, rgba(255, 255, 255, 0.9) 50%, rgba(19, 136, 8, 0.15) 100%);
+}
+.tricolor-divider {
+  background: linear-gradient(90deg, transparent, var(--js-saffron) 20%, var(--js-white) 50%, var(--js-green) 80%, transparent);
+  height: 3px;
+  border-radius: 999px;
+}
+.tricolor-underline {
+  position: relative;
+  display: inline-block;
+}
+.tricolor-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--js-saffron), var(--js-white), var(--js-green));
+}
+
+/* ============================================================
+   GOVT CONTAINER — wide portal feel
+   ============================================================ */
+.gov-container {
+  width: 100%;
+  max-width: 1720px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 640px)  { .gov-container { padding-left: 1.5rem;  padding-right: 1.5rem;  } }
+@media (min-width: 1024px) { .gov-container { padding-left: 2.5rem;  padding-right: 2.5rem;  } }
+@media (min-width: 1280px) { .gov-container { padding-left: 3rem;    padding-right: 3rem;    } }
+@media (min-width: 1440px) { .gov-container { padding-left: 4rem;    padding-right: 4rem;    } }
+@media (min-width: 1920px) { .gov-container { padding-left: 3rem;    padding-right: 3rem;    } }
+
+/* ============================================================
+   GLASS PANELS
+   ============================================================ */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.glass-panel-dark {
+  background: rgba(16, 42, 67, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.js-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+/* ============================================================
+   PREMIUM SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--js-cream); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--js-saffron), var(--js-green));
+  border-radius: 999px;
+  border: 2px solid var(--js-cream);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--js-saffron-deep), var(--js-green-deep));
+}
+* { scrollbar-color: var(--js-green) var(--js-cream); }
+
+::selection {
+  background: rgba(19, 136, 8, 0.18);
+  color: var(--js-green-deep);
+}
+
+/* ============================================================
+   KEYFRAME LIBRARY — premium animation primitives
+   ============================================================ */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.03); }
+}
+.pulse-glow { animation: pulseGlow 2.5s infinite ease-in-out; }
+
+@keyframes js-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.js-float { animation: js-float 4s var(--js-ease) infinite; }
+
+@keyframes js-float-slow {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  33%      { transform: translateY(-12px) translateX(6px); }
+  66%      { transform: translateY(6px) translateX(-4px); }
+}
+.js-float-slow { animation: js-float-slow 9s var(--js-ease) infinite; }
+
+@keyframes js-pulse-ring {
+  0%   { transform: scale(0.85); opacity: 0.6; }
+  70%  { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.js-pulse-ring { animation: js-pulse-ring 2.4s var(--js-ease) infinite; }
+
+@keyframes js-blob-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(30px, -20px) scale(1.05); }
+  66%  { transform: translate(-20px, 20px) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes js-shimmer-text {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes js-gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+@keyframes js-count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes js-spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.js-spin-slow { animation: js-spin-slow 32s linear infinite; }
+
+@keyframes js-tilt {
+  0%, 100% { transform: rotate(-1deg); }
+  50%      { transform: rotate(1deg); }
+}
+
+@keyframes js-sweep {
+  0%   { transform: translateX(-150%); }
+  100% { transform: translateX(150%); }
+}
+
+@keyframes js-fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.js-fade-in-up { animation: js-fade-in-up 0.7s var(--js-ease) both; }
+
+@keyframes js-scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.js-scale-in { animation: js-scale-in 0.6s var(--js-ease) both; }
+
+@keyframes js-orbit {
+  from { transform: rotate(0deg) translateX(60px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(60px) rotate(-360deg); }
+}
+
+@keyframes js-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+.js-blink { animation: js-blink 1.6s ease-in-out infinite; }
+
+/* ============================================================
+   UTILITY CLASSES — premium glow, shimmer, lift
+   ============================================================ */
+.js-glow-green   { box-shadow: var(--js-shadow-glow-green); }
+.js-glow-saffron { box-shadow: var(--js-shadow-glow-saffron); }
+.js-glow-navy    { box-shadow: var(--js-shadow-glow-navy); }
+.js-glow-gold    { box-shadow: var(--js-shadow-glow-gold); }
+.js-shadow-lg    { box-shadow: var(--js-shadow-lg); }
+.js-shadow-xl    { box-shadow: var(--js-shadow-xl); }
+
+.js-text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--js-saffron) 0%,
+    var(--js-saffron-deep) 25%,
+    #FFD9A0 50%,
+    var(--js-saffron-deep) 75%,
+    var(--js-saffron) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: js-shimmer-text 5s linear infinite;
+}
+
+.js-text-tricolor {
+  background: linear-gradient(
+    90deg,
+    var(--js-saffron) 0%,
+    var(--js-saffron-deep) 33%,
+    #334155 50%,
+    var(--js-green) 66%,
+    var(--js-green-deep) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.js-text-gold {
+  background: linear-gradient(
+    135deg,
+    var(--js-gold-light) 0%,
+    var(--js-gold) 50%,
+    #FFD9A0 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Auroras & animated backgrounds */
+.js-aurora {
+  background: linear-gradient(
+    120deg,
+    #F5F9F6 0%,
+    #FFFFFF 30%,
+    #FFF4E6 50%,
+    #FFFFFF 70%,
+    #ECFDF5 100%
+  );
+  background-size: 300% 300%;
+  animation: js-gradient-shift 14s var(--js-ease) infinite;
+}
+
+.js-aurora-warm {
+  background: linear-gradient(
+    120deg,
+    #FFF8EC 0%,
+    #FFFFFF 25%,
+    #FFE8CC 50%,
+    #FFFFFF 75%,
+    #F5F9F6 100%
+  );
+  background-size: 300% 300%;
+  animation: js-gradient-shift 16s var(--js-ease) infinite;
+}
+
+.js-bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.45;
+  pointer-events: none;
+  animation: js-blob-drift 18s var(--js-ease) infinite;
+  z-index: 0;
+}
+
+/* ============================================================
+   PREMIUM BUTTONS — magnetic, glow, shimmer sweep
+   ============================================================ */
+.js-btn-primary {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.js-btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%),
+              rgba(255, 255, 255, 0.35) 0%,
+              transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s var(--js-ease);
+  z-index: 1;
+}
+.js-btn-primary:hover::before { opacity: 1; }
+.js-btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.7s var(--js-ease);
+  z-index: 2;
+}
+.js-btn-primary:hover::after { left: 120%; }
+
+.js-btn-gold {
+  background: linear-gradient(135deg, #D4AF37 0%, #C99700 50%, #8A6508 100%);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.js-btn-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 0.8s var(--js-ease);
+  z-index: 1;
+}
+.js-btn-gold:hover::before { transform: translateX(100%); }
+
+/* ============================================================
+   CARD LIFT — premium hover elevation
+   ============================================================ */
+.js-lift {
+  transition: transform 0.45s var(--js-ease), box-shadow 0.45s var(--js-ease), border-color 0.3s var(--js-ease);
+  will-change: transform;
+}
+.js-lift:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--js-shadow-xl);
+}
+
+.js-lift-sm {
+  transition: transform 0.35s var(--js-ease), box-shadow 0.35s var(--js-ease), border-color 0.3s var(--js-ease);
+}
+.js-lift-sm:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--js-shadow-lg);
+}
+
+.js-lift-tilt {
+  transition: transform 0.5s var(--js-ease-spring), box-shadow 0.5s var(--js-ease);
+  transform-style: preserve-3d;
+}
+.js-lift-tilt:hover {
+  transform: perspective(900px) rotateX(2deg) rotateY(-2deg) translateY(-6px);
+  box-shadow: var(--js-shadow-xl);
+}
+
+/* ============================================================
+   PREMIUM DECORATIVE PRIMITIVES
+   ============================================================ */
+
+/* Government-style section number badge (ornate) */
+.js-section-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 30%, #FFFFFF 0%, #FFF8E6 40%, #F0E2C0 100%);
+  border: 2px solid var(--js-gold-light);
+  box-shadow:
+    inset 0 2px 6px rgba(212, 175, 55, 0.3),
+    0 4px 14px rgba(212, 175, 55, 0.3);
+  font-family: 'Georgia', serif;
+  font-weight: 800;
+  color: var(--js-gold);
+  position: relative;
+}
+.js-section-num::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 1px dashed rgba(212, 175, 55, 0.5);
+}
+
+/* Eyebrow badge — govt style */
+.js-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.875rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, rgba(19, 136, 8, 0.12), rgba(19, 136, 8, 0.06));
+  color: var(--js-green-deep);
+  border: 1px solid rgba(19, 136, 8, 0.25);
+}
+.js-eyebrow-saffron {
+  background: linear-gradient(135deg, rgba(255, 153, 51, 0.16), rgba(255, 153, 51, 0.06));
+  color: var(--js-saffron-deep);
+  border-color: rgba(255, 153, 51, 0.35);
+}
+.js-eyebrow-navy {
+  background: linear-gradient(135deg, rgba(16, 42, 67, 0.10), rgba(16, 42, 67, 0.04));
+  color: var(--js-navy);
+  border-color: rgba(16, 42, 67, 0.2);
+}
+.js-eyebrow-gold {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.18), rgba(212, 175, 55, 0.06));
+  color: #8A6508;
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+/* Premium divider with ornaments */
+.js-ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.js-ornament::before,
+.js-ornament::after {
+  content: '';
+  height: 2px;
+  width: 48px;
+  background: linear-gradient(90deg, transparent, var(--js-gold-light), transparent);
+  border-radius: 999px;
+}
+
+/* Premium stat card */
+.js-stat {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  padding: 1.5rem 1.25rem;
+  background: linear-gradient(160deg, #FFFFFF 0%, #FAFBFC 100%);
+  border: 1px solid rgba(16, 42, 67, 0.08);
+  box-shadow: var(--js-shadow-md);
+  transition: transform 0.4s var(--js-ease), box-shadow 0.4s var(--js-ease);
+}
+.js-stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, var(--js-saffron), var(--js-white), var(--js-green));
+}
+.js-stat:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--js-shadow-lg);
+}
+
+/* Premium gradient card — deep green (was navy) to match tricolor theme */
+.js-card-gradient {
+  background: linear-gradient(135deg, var(--js-green-deep) 0%, var(--js-navy-deep) 100%);
+  position: relative;
+  overflow: hidden;
+}
+.js-card-gradient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(255, 153, 51, 0.20), transparent 50%);
+  pointer-events: none;
+}
+
+/* Section ribbon — government banner feel, deep green (was navy) */
+.js-ribbon {
+  background: linear-gradient(135deg, var(--js-green-deep) 0%, var(--js-green) 100%);
+  position: relative;
+  overflow: hidden;
+}
+.js-ribbon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 30%, rgba(255, 153, 51, 0.18), transparent 40%),
+    radial-gradient(circle at 85% 70%, rgba(16, 42, 67, 0.22), transparent 40%);
+  pointer-events: none;
+}
+
+/* Premium dotted/grid pattern background */
+.js-grid-pattern {
+  background-image:
+    linear-gradient(rgba(16, 42, 67, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 42, 67, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.js-dot-pattern {
+  background-image: radial-gradient(circle, rgba(16, 42, 67, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ============================================================
+   TOUCH TARGETS
+   ============================================================ */
+@media (max-width: 640px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

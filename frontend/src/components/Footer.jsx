@@ -24,9 +24,7 @@ const QUICK_LINKS = [
 
 const PORTAL_LINKS = [
   { label: 'Citizen Login',        route: 'auth',   opts: { targetIntent: 'login',    path: '/login' } },
-  { label: 'Officer Portal',       route: 'auth',   opts: { targetIntent: 'officer', path: '/login?intent=officer' } },
-  { label: 'Register a Complaint', route: 'auth',   opts: { targetIntent: 'register',path: '/register' } },
-  { label: 'Admin Login',          route: 'admin-login', opts: { path: '/admin/login' } }
+  { label: 'Register a Complaint', route: 'auth',   opts: { targetIntent: 'register',path: '/register' } }
 ];
 
 export default function Footer({ onNavigate }) {
@@ -102,7 +100,7 @@ export default function Footer({ onNavigate }) {
             <ul className="space-y-2.5">
               <li className="flex items-start gap-2">
                 <Phone className="w-3.5 h-3.5 mt-0.5 text-[#FF9933] flex-shrink-0" />
-                <span>Helpline: <span className="font-bold text-white">14464</span> (Toll-Free)</span>
+                <span>Helpline: <span className="font-bold text-white">1800-JAN-SAMADHAN</span></span>
               </li>
               <li className="flex items-start gap-2">
                 <Mail className="w-3.5 h-3.5 mt-0.5 text-[#FF9933] flex-shrink-0" />
