@@ -8,20 +8,23 @@ import { motion } from 'framer-motion';
  *
  * Props:
  *   - children:  content
- *   - variant:   'up' (default) | 'fade' | 'scale' | 'left' | 'right'
+ *   - variant:   'up' (default) | 'fade' | 'scale' | 'left' | 'right' | 'down'
  *   - delay:     seconds of additional delay
  *   - className: passthrough
  *   - once:      animate only the first time it enters viewport (default true)
  *   - amount:    fraction of element visible before triggering (default 0.2)
+ *   - duration:  animation duration in seconds (default 0.6)
  */
 const EASE = [0.22, 1, 0.36, 1];
 
 const VARIANTS = {
-  up:    { hidden: { opacity: 0, y: 24 },                  show: { opacity: 1, y: 0 } },
+  up:    { hidden: { opacity: 0, y: 28 },                  show: { opacity: 1, y: 0 } },
+  down:  { hidden: { opacity: 0, y: -28 },                 show: { opacity: 1, y: 0 } },
   fade:  { hidden: { opacity: 0 },                         show: { opacity: 1 } },
-  scale: { hidden: { opacity: 0, scale: 0.94 },            show: { opacity: 1, scale: 1 } },
-  left:  { hidden: { opacity: 0, x: -28 },                 show: { opacity: 1, x: 0 } },
-  right: { hidden: { opacity: 0, x: 28 },                  show: { opacity: 1, x: 0 } }
+  scale: { hidden: { opacity: 0, scale: 0.92 },            show: { opacity: 1, scale: 1 } },
+  left:  { hidden: { opacity: 0, x: -36 },                 show: { opacity: 1, x: 0 } },
+  right: { hidden: { opacity: 0, x: 36 },                  show: { opacity: 1, x: 0 } },
+  flip:  { hidden: { opacity: 0, rotateX: -25 },           show: { opacity: 1, rotateX: 0 } }
 };
 
 export default function Reveal({
@@ -30,7 +33,8 @@ export default function Reveal({
   delay = 0,
   className = '',
   once = true,
-  amount = 0.2
+  amount = 0.2,
+  duration = 0.6
 }) {
   const v = VARIANTS[variant] || VARIANTS.up;
   return (
@@ -40,7 +44,7 @@ export default function Reveal({
       initial="hidden"
       whileInView="show"
       viewport={{ once, amount }}
-      transition={{ duration: 0.6, ease: EASE, delay }}
+      transition={{ duration, ease: EASE, delay }}
     >
       {children}
     </motion.div>

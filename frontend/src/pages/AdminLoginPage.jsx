@@ -8,14 +8,28 @@ import {
   ArrowLeft,
   CheckCircle2,
   AlertCircle,
-  KeyRound,
-  Sparkles,
-  ShieldAlert
+  Sparkles
 } from 'lucide-react';
 import JanSamadhanLogo from '../components/JanSamadhanLogo';
-import adminDashboardBg from '../assets/admin_dashboard_bg.jpg';
 import { loginAdmin, getAdminSetupStatus, firstTimeAdminSetup } from '../services/api';
 
+/**
+ * AdminLoginPage — Central Administration console sign-in.
+ *
+ * This screen is NOT reachable by typing any URL. It is opened only
+ * through the hidden easter-egg: tap any JanSamadhan logo 5 times
+ * quickly → a staff-access chooser modal appears → "Admin Login".
+ * There is no public link, navbar item, or footer reference to it.
+ *
+ * Two modes:
+ *   - 'login'  : standard admin sign-in (admin login ID + password)
+ *   - 'setup'  : one-time first-time primary admin provisioning
+ *                (auto-shown when backend reports no admin configured)
+ *
+ * A minimal "Back to Main Login" link exists for usability, but does
+ * NOT advertise officer/admin routes to the general public — it points
+ * to the standard citizen /login.
+ */
 export default function AdminLoginPage({
   currentUser = null,
   onLogout,
@@ -35,7 +49,7 @@ export default function AdminLoginPage({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Check whether Admin account is configured
+  /* Check whether an Admin account is configured on the backend */
   useEffect(() => {
     let isMounted = true;
     getAdminSetupStatus()
@@ -48,6 +62,7 @@ export default function AdminLoginPage({
       })
       .catch(() => {
         if (isMounted) {
+          // Default to login mode if the status check fails
           setIsConfigured(true);
           setMode('login');
         }
@@ -60,6 +75,7 @@ export default function AdminLoginPage({
     };
   }, []);
 
+  /* ---------- Standard admin login ---------- */
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -72,7 +88,6 @@ export default function AdminLoginPage({
       setErrorMessage('Please enter the Admin Login ID (e.g. admin@jansamadhanadmin).');
       return;
     }
-
     if (!cleanPw) {
       setErrorMessage('Please enter the Admin confidential password.');
       return;
@@ -80,11 +95,7 @@ export default function AdminLoginPage({
 
     setLoading(true);
     try {
-      const res = await loginAdmin({
-        loginId: cleanId,
-        password: cleanPw
-      });
-
+      const res = await loginAdmin({ loginId: cleanId, password: cleanPw });
       setSuccessMessage(`Administrative access granted. Welcome, ${res.user.name || 'Administrator'}!`);
       setTimeout(() => {
         onLoginSuccess(res.user, 'admin');
@@ -98,6 +109,7 @@ export default function AdminLoginPage({
     }
   };
 
+  /* ---------- First-time admin setup ---------- */
   const handleSetupSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -111,12 +123,10 @@ export default function AdminLoginPage({
       setErrorMessage('Please enter an Admin Login ID (e.g. admin@jansamadhanadmin).');
       return;
     }
-
     if (cleanPw.length < 6) {
       setErrorMessage('Admin Password must be at least 6 characters in length.');
       return;
     }
-
     if (cleanPw !== cleanConfirm) {
       setErrorMessage('Password and Confirm Password do not match.');
       return;
@@ -130,7 +140,6 @@ export default function AdminLoginPage({
         password: cleanPw,
         confirmPassword: cleanConfirm
       });
-
       setSuccessMessage('Primary Administrator account created and configured successfully! Launching dashboard...');
       setIsConfigured(true);
       setTimeout(() => {
@@ -145,12 +154,19 @@ export default function AdminLoginPage({
 
   return (
     <div
-      className="min-h-screen bg-[#102A43] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans selection:bg-[#FF9933]/30 selection:text-white text-slate-100 bg-cover bg-fixed bg-center relative"
-      style={{ backgroundImage: `url(${adminDashboardBg})` }}
+      className="min-h-screen bg-[#102A43] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans selection:bg-[#FF9933]/30 selection:text-white text-slate-100 relative overflow-hidden"
     >
-      {/* Background Readability Mask: Deep navy executive cyber command glow */}
-      <div className="fixed inset-0 bg-[#0c1f33]/92 backdrop-blur-[2px] pointer-events-none z-0"></div>
-      
+      {/* Background — CSS gradient + grid + bokeh (no asset import) */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0b1c2d] via-[#102A43] to-[#0b1c2d]" />
+        <div className="absolute inset-0 opacity-[0.06]"
+             style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+        <div className="absolute -top-40 -right-40 w-[28rem] h-[28rem] rounded-full bg-[#FF9933]/15 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-[28rem] h-[28rem] rounded-full bg-[#138808]/18 blur-3xl" />
+      </div>
+      {/* Deep navy readability mask */}
+      <div className="fixed inset-0 bg-[#0c1f33]/80 backdrop-blur-[2px] pointer-events-none z-0"></div>
+
       {/* Top Header Bar & Back to Main Login */}
       <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex items-center justify-between mb-6">
@@ -160,7 +176,7 @@ export default function AdminLoginPage({
           >
             <ArrowLeft className="w-4 h-4 mr-1.5 text-[#FF9933]" /> Back to Main Login
           </button>
-          
+
           <button
             onClick={() => onNavigate('landing', { path: '/' })}
             className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer bg-slate-900/60 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-slate-700/60"
@@ -228,6 +244,14 @@ export default function AdminLoginPage({
             <div className="mb-5 p-3.5 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-900">
               <span className="font-bold block">Current Session: {currentUser.name} ({currentUser.role})</span>
               <span>This portal requires Central Administrator privileges. Please authenticate with Admin credentials below or switch account.</span>
+            </div>
+          )}
+
+          {/* Checking setup status */}
+          {checkingSetup && (
+            <div className="mb-5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-600 flex items-center space-x-2">
+              <div className="w-4 h-4 border-2 border-slate-300 border-t-[#102A43] rounded-full animate-spin"></div>
+              <span>Checking administrator configuration status…</span>
             </div>
           )}
 
@@ -445,7 +469,7 @@ export default function AdminLoginPage({
               onClick={() => onNavigate('auth', { path: '/login' })}
               className="text-xs font-bold text-[#006B3C] hover:underline cursor-pointer block w-full"
             >
-              ← Back to Main Login (Citizen &amp; Officer Portals)
+              ← Back to Main Login
             </button>
             <p className="text-[11px] text-slate-400">
               Admin credentials are fully controlled by the project owner via this portal, <code>backend/.env</code>, or <code>python setup_admin.py</code>.

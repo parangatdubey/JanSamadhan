@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
-  ArrowRight,
   Phone,
   Lock,
   Eye,
@@ -13,11 +12,9 @@ import {
   KeyRound,
   Building2,
   BadgeCheck,
-  Mail,
-  ExternalLink
+  Mail
 } from 'lucide-react';
 import JanSamadhanLogo from '../components/JanSamadhanLogo';
-import authBg from '../assets/auth_bg.jpg';
 import {
   registerWithPhone,
   loginWithPhone,
@@ -27,6 +24,26 @@ import {
   fetchDepartments
 } from '../services/api';
 
+/**
+ * AuthPage — JanSamadhan public authentication screen.
+ *
+ * PUBLIC SURFACE (what a normal citizen sees at /login and /register):
+ *   - "Continue with Google" + "Continue with Phone Number"
+ *   - Phone login + phone registration + forgot-password
+ *
+ * HIDDEN SURFACES (not advertised anywhere in the UI):
+ *   - Officer login form: rendered ONLY when this screen is opened with
+ *     targetIntent === 'officer'. That intent is set exclusively by the
+ *     hidden 5-tap logo easter-egg → staff chooser modal → "Officer
+ *     Login". There is no visible tab, banner, button, footer link, or
+ *     URL that reveals officer login exists to the general public.
+ *   - Admin login: lives on a completely separate in-app screen
+ *     (see AdminLoginPage.jsx), reachable only through the same
+ *     easter-egg chooser → "Admin Login". Nothing here references admin.
+ *
+ * Officer access path:  5-tap logo easter-egg → chooser → Officer Login.
+ * Admin access path:    5-tap logo easter-egg → chooser → Admin Login.
+ */
 export default function AuthPage({
   currentUser = null,
   onLogout,
@@ -34,7 +51,10 @@ export default function AuthPage({
   onLoginSuccess,
   onNavigate
 }) {
-  // Separate Portal Type: 'citizen' | 'officer'
+  // Portal type: 'citizen' is default. 'officer' is reachable ONLY when
+  // targetIntent === 'officer' (set by the hidden 5-tap logo easter-egg →
+  // staff chooser modal → "Officer Login"). The portalType switcher tab
+  // is intentionally NOT rendered.
   const [portalType, setPortalType] = useState(
     targetIntent === 'officer' ? 'officer' : 'citizen'
   );
@@ -42,7 +62,9 @@ export default function AuthPage({
   // Citizen auth method: 'selection' | 'phone' | 'forgot-password'
   const [authMethod, setAuthMethod] = useState('selection');
   // Citizen phone sub-mode: 'login' | 'register'
-  const [phoneMode, setPhoneMode] = useState('login');
+  const [phoneMode, setPhoneMode] = useState(
+    targetIntent === 'register' ? 'register' : 'login'
+  );
 
   // Citizen Form Fields
   const [name, setName] = useState('');
@@ -75,12 +97,12 @@ export default function AuthPage({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Google OAuth GIS Client setup
+  // Google OAuth Client ID (optional — falls back gracefully)
   const googleClientId = typeof import.meta !== 'undefined' && import.meta.env
     ? (import.meta.env.VITE_GOOGLE_CLIENT_ID || '')
     : '';
 
-  // Load available departments for Officer selection
+  /* ---------- Departments loader (officer-only) ---------- */
   const loadDepts = async () => {
     setLoadingDepts(true);
     setDeptsConnectionError(false);
@@ -91,7 +113,6 @@ export default function AuthPage({
         setDeptsConnectionError(false);
       }
     } catch (err) {
-      console.warn('Failed to load departments in AuthPage:', err);
       if (departments.length === 0) {
         setDeptsConnectionError(true);
       }
@@ -101,15 +122,18 @@ export default function AuthPage({
   };
 
   useEffect(() => {
-    loadDepts();
-  }, []);
-
-  // Reload departments when navigating to Officer Portal if currently empty
-  useEffect(() => {
-    if (portalType === 'officer' && departments.length === 0 && !loadingDepts) {
-      loadDepts();
-    }
+    if (portalType === 'officer') loadDepts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [portalType]);
+
+  /* Keep portalType in sync with targetIntent when App re-uses this
+     screen across intent changes (e.g. owner taps the hidden logo
+     easter-egg while already on /login and picks Officer Login). */
+  useEffect(() => {
+    setPortalType(targetIntent === 'officer' ? 'officer' : 'citizen');
+    setPhoneMode(targetIntent === 'register' ? 'register' : 'login');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetIntent]);
 
   const handleDepartmentChange = (e) => {
     const selectedId = e.target.value;
@@ -122,8 +146,8 @@ export default function AuthPage({
     setOfficerDepartment(found ? found.name : '');
   };
 
+  /* ---------- Google Identity Services bootstrap ---------- */
   useEffect(() => {
-    // Dynamically load Google Identity Services script if not present
     if (typeof window !== 'undefined' && !window.google) {
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
@@ -131,17 +155,16 @@ export default function AuthPage({
       script.defer = true;
       document.body.appendChild(script);
     }
-    // Explicitly disable GIS auto-select to guarantee user manual selection
     if (typeof window !== 'undefined' && window.google?.accounts?.id?.disableAutoSelect) {
       try {
         window.google.accounts.id.disableAutoSelect();
       } catch (e) {
-        console.warn('disableAutoSelect notice:', e);
+        /* best-effort */
       }
     }
   }, []);
 
-  // Handle Google OAuth 2.0 Click - Strictly manual citizen login
+  /* ---------- Google OAuth handler ---------- */
   const handleGoogleAuth = async () => {
     setErrorMessage('');
     setSuccessMessage('');
@@ -174,27 +197,24 @@ export default function AuthPage({
             }
           }
         });
-
-        // Trigger Google account selection prompt explicitly
         window.google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
             setLoading(false);
           }
         });
       } catch (err) {
-        console.warn('GIS error:', err);
         setLoading(false);
         setErrorMessage('Google Sign-In initialization error. Please use Phone Number authentication.');
       }
     } else {
       setLoading(false);
       setErrorMessage(
-        'Google OAuth Client ID is not configured (VITE_GOOGLE_CLIENT_ID missing in frontend/.env). Please select "Continue with Phone Number" below.'
+        'Google OAuth is not configured yet. Please use "Continue with Phone Number" below.'
       );
     }
   };
 
-  // Handle Citizen Phone Registration
+  /* ---------- Citizen phone registration ---------- */
   const handlePhoneRegister = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -204,23 +224,19 @@ export default function AuthPage({
       setErrorMessage('Please enter your full legal name.');
       return;
     }
-
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
     if (cleanPhone.length !== 10) {
       setErrorMessage('Please enter a valid 10-digit Indian mobile number.');
       return;
     }
-
     if (!password || password.length < 6) {
       setErrorMessage('Password must be at least 6 characters in length.');
       return;
     }
-
     if (password !== confirmPassword) {
       setErrorMessage('Password and confirm password do not match.');
       return;
     }
-
     const cleanEmail = email.trim().toLowerCase() || undefined;
 
     setLoading(true);
@@ -233,7 +249,6 @@ export default function AuthPage({
         confirmPassword,
         role: 'CITIZEN'
       });
-      // Successful registration: switch to login mode and prompt user to log in
       setPassword('');
       setConfirmPassword('');
       setPhoneMode('login');
@@ -246,7 +261,7 @@ export default function AuthPage({
     }
   };
 
-  // Handle Citizen Phone Login
+  /* ---------- Citizen phone login ---------- */
   const handlePhoneLogin = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -256,7 +271,6 @@ export default function AuthPage({
       setErrorMessage('Please enter your mobile number and password.');
       return;
     }
-
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
     if (cleanPhone.length !== 10) {
       setErrorMessage('Please enter a valid 10-digit Indian mobile number.');
@@ -265,10 +279,7 @@ export default function AuthPage({
 
     setLoading(true);
     try {
-      const res = await loginWithPhone({
-        phone: cleanPhone,
-        password
-      });
+      const res = await loginWithPhone({ phone: cleanPhone, password });
       setSuccessMessage('Login successful! Welcome back.');
       setTimeout(() => {
         onLoginSuccess(res.user, targetIntent);
@@ -280,7 +291,7 @@ export default function AuthPage({
     }
   };
 
-  // Handle Officer Login
+  /* ---------- Officer login ---------- */
   const handleOfficerLogin = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -290,10 +301,8 @@ export default function AuthPage({
       setErrorMessage('Please select your assigned department to proceed.');
       return;
     }
-
     const cleanId = officerLoginId.trim().toLowerCase();
     const cleanPw = officerPassword.trim();
-
     if (!cleanId || !cleanPw) {
       setErrorMessage('Please enter your Officer Login ID / Username and password.');
       return;
@@ -304,7 +313,7 @@ export default function AuthPage({
     );
     const expectedDomain = selectedDeptObj?.login_code;
 
-    // Validate username domain if full email/login format is entered
+    // Domain check when a full email-style login ID is entered
     if (cleanId.includes('@') && expectedDomain) {
       const enteredDomain = cleanId.split('@')[1];
       if (enteredDomain !== expectedDomain.toLowerCase()) {
@@ -336,7 +345,7 @@ export default function AuthPage({
     }
   };
 
-  // Handle Password Reset (Citizen)
+  /* ---------- Password reset ---------- */
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -347,12 +356,10 @@ export default function AuthPage({
       setErrorMessage('Please enter a valid 10-digit Indian mobile number.');
       return;
     }
-
     if (password.length < 6) {
       setErrorMessage('New password must be at least 6 characters in length.');
       return;
     }
-
     if (password !== confirmPassword) {
       setErrorMessage('Passwords do not match.');
       return;
@@ -360,10 +367,7 @@ export default function AuthPage({
 
     setLoading(true);
     try {
-      const res = await resetPassword({
-        phone: cleanPhone,
-        newPassword: password
-      });
+      const res = await resetPassword({ phone: cleanPhone, newPassword: password });
       setSuccessMessage(res.message || 'Password has been updated. You can now login.');
       setPhoneMode('login');
       setAuthMethod('phone');
@@ -374,13 +378,25 @@ export default function AuthPage({
     }
   };
 
+  /* ---------- Derived copy ---------- */
+  const headerTitle =
+    portalType === 'officer'
+      ? 'Department Officer Access'
+      : 'JanSamadhan Portal Access';
+  const headerSubtitle =
+    portalType === 'officer'
+      ? 'Restricted area — for authorized department nodal staff only'
+      : 'National Public Grievance Redressal & Audit System';
+
   return (
-    <div
-      className="min-h-screen bg-[#F5F9F6] flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans selection:bg-[#138808]/20 selection:text-[#006B3C] bg-cover bg-fixed bg-center relative"
-      style={{ backgroundImage: `url(${authBg})` }}
-    >
-      {/* Background Readability Mask: Soft tricolor atmospheric glow */}
-      <div className="fixed inset-0 bg-[#F5F9F6]/92 backdrop-blur-[2px] pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-[#F5F9F6] flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans selection:bg-[#138808]/20 selection:text-[#006B3C] relative overflow-hidden">
+      {/* Soft tricolor atmospheric background (CSS-only, no asset import) */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-[#FF9933]/12 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-[#138808]/12 blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.04]"
+             style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, #102A43 0, transparent 35%), radial-gradient(circle at 75% 75%, #006B3C 0, transparent 35%)' }} />
+      </div>
 
       {/* Top Back Button & Branding */}
       <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md">
@@ -396,10 +412,10 @@ export default function AuthPage({
             <JanSamadhanLogo size="lg" variant="light" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-[#102A43] tracking-tight">
-            JanSamadhan Portal Access
+            {headerTitle}
           </h2>
           <p className="mt-1 text-xs sm:text-sm text-slate-600 font-medium">
-            National Public Grievance Redressal &amp; Audit System
+            {headerSubtitle}
           </p>
         </div>
       </div>
@@ -440,62 +456,9 @@ export default function AuthPage({
             </div>
           )}
 
-          {/* DEDICATED PROMINENT ADMIN LOGIN BANNER (Requirement 1) */}
-          <div className="mb-5 p-3.5 bg-gradient-to-r from-slate-900 via-[#102A43] to-slate-900 text-white rounded-2xl flex items-center justify-between shadow-md border border-slate-700">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 flex-shrink-0">
-                <ShieldCheck className="w-4 h-4 text-[#FF9933]" />
-              </div>
-              <div>
-                <span className="text-xs font-extrabold block text-white leading-tight">Central Admin Command</span>
-                <span className="text-[10px] text-slate-300">System oversight &amp; officer management</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('admin-login', { path: '/admin/login' })}
-              className="px-3 py-1.5 bg-[#FF9933] hover:bg-[#e68a2e] text-slate-950 font-black text-xs rounded-xl transition-all shadow-sm cursor-pointer flex items-center space-x-1 flex-shrink-0"
-            >
-              <span>Admin Login</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Portal Switcher Tabs: Citizen Login vs Officer Login (Separated) */}
-          <div className="mb-6 p-1 bg-slate-100 rounded-2xl grid grid-cols-2 gap-1">
-            <button
-              type="button"
-              onClick={() => {
-                setPortalType('citizen');
-                setErrorMessage('');
-                setSuccessMessage('');
-              }}
-              className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
-                portalType === 'citizen'
-                  ? 'bg-white text-[#006B3C] shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <User className="w-3.5 h-3.5" />
-              <span>Citizen Login</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPortalType('officer');
-                setErrorMessage('');
-                setSuccessMessage('');
-              }}
-              className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
-                portalType === 'officer'
-                  ? 'bg-[#102A43] text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Officer Login</span>
-            </button>
-          </div>
+          {/* NOTE: No admin/officer tab switcher, no admin banner, no admin footer link.
+              The public surface is citizen-only. Officer & admin login routes
+              are deliberately unadvertised (Flipkart/Amazon-style stealth). */}
 
           {/* Error Banner */}
           {errorMessage && (
@@ -524,6 +487,7 @@ export default function AuthPage({
 
           {/* ========================================================
               VIEW A: CITIZEN PORTAL (Phone & Google Authentication)
+              This is the only view a normal public user ever sees.
               ======================================================== */}
           {portalType === 'citizen' && (
             <>
@@ -555,22 +519,10 @@ export default function AuthPage({
                     className="w-full py-3.5 px-4 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-slate-300 text-slate-800 font-bold rounded-2xl shadow-sm transition-all flex items-center justify-center space-x-3 text-sm cursor-pointer disabled:opacity-50"
                   >
                     <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                      <path
-                        fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                      />
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                     </svg>
                     <span>Continue with Google</span>
                   </button>
@@ -603,10 +555,7 @@ export default function AuthPage({
                   <div className="flex border-b border-slate-200 mb-5">
                     <button
                       type="button"
-                      onClick={() => {
-                        setPhoneMode('login');
-                        setErrorMessage('');
-                      }}
+                      onClick={() => { setPhoneMode('login'); setErrorMessage(''); }}
                       className={`flex-1 pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${
                         phoneMode === 'login'
                           ? 'border-[#006B3C] text-[#006B3C]'
@@ -617,10 +566,7 @@ export default function AuthPage({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setPhoneMode('register');
-                        setErrorMessage('');
-                      }}
+                      onClick={() => { setPhoneMode('register'); setErrorMessage(''); }}
                       className={`flex-1 pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${
                         phoneMode === 'register'
                           ? 'border-[#006B3C] text-[#006B3C]'
@@ -700,10 +646,7 @@ export default function AuthPage({
                         {phoneMode === 'login' && (
                           <button
                             type="button"
-                            onClick={() => {
-                              setAuthMethod('forgot-password');
-                              setErrorMessage('');
-                            }}
+                            onClick={() => { setAuthMethod('forgot-password'); setErrorMessage(''); }}
                             className="text-[11px] font-semibold text-[#006B3C] hover:underline cursor-pointer"
                           >
                             Forgot Password?
@@ -856,10 +799,7 @@ export default function AuthPage({
                   <div className="text-center pt-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        setAuthMethod('phone');
-                        setPhoneMode('login');
-                      }}
+                      onClick={() => { setAuthMethod('phone'); setPhoneMode('login'); }}
                       className="text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
                     >
                       ← Back to Login
@@ -872,6 +812,7 @@ export default function AuthPage({
 
           {/* ========================================================
               VIEW B: DEPARTMENT OFFICER PORTAL
+              REACHED ONLY VIA /login?intent=officer — no public UI hint.
               ======================================================== */}
           {portalType === 'officer' && (
             <div className="space-y-5">
@@ -1035,23 +976,31 @@ export default function AuthPage({
                 <span className="font-bold text-slate-800 block mb-0.5">ℹ️ Officer Notice:</span>
                 Officer accounts are provisioned exclusively by Central Administration. Use the credentials provided by your Administrator.
               </div>
+
+              {/* Quiet return to citizen sign-in — only visible once an
+                  officer is already on this restricted view (does NOT
+                  advertise officer login exists to the general public). */}
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPortalType('citizen');
+                    setAuthMethod('selection');
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  ← Back to Citizen Sign In
+                </button>
+              </div>
             </div>
           )}
 
-          {/* DEDICATED ADMIN LOGIN FOOTER LINK */}
-          <div className="mt-6 pt-4 border-t border-slate-200 text-center">
-            <button
-              type="button"
-              onClick={() => onNavigate('admin-login', { path: '/admin/login' })}
-              className="text-xs font-bold text-slate-700 hover:text-[#102A43] inline-flex items-center space-x-1 cursor-pointer transition-colors"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#FF9933]" />
-              <span>Looking for Central Admin? Dedicated Admin Login (/admin/login)</span>
-              <ArrowRight className="w-3 h-3 text-slate-400" />
-            </button>
-          </div>
+          {/* NOTE: Admin login link / banner intentionally removed.
+              Admins reach /admin/login directly. */}
 
-          {/* Terms and Privacy Policy Note */}
+          {/* Terms note */}
           <p className="text-[11px] text-slate-400 text-center mt-4">
             Official Grievance Redressal System — Government of India initiative.
           </p>
